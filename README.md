@@ -29,39 +29,6 @@ function App() {
 }
 ```
 
-## Headless Usage
-
-Use the hooks directly to build your own UI:
-
-```tsx
-import { FeedTideProvider, useFeatures, useVote, useFeedback } from '@feedtide/react';
-
-function MyFeatureBoard() {
-  const { features, isLoading, error, refetch } = useFeatures();
-
-  return (
-    <ul>
-      {features.map((f) => (
-        <li key={f.id}>
-          <VoteCell featureId={f.id} voted={f.hasVoted} count={f.vote_count} />
-          {f.title}
-        </li>
-      ))}
-    </ul>
-  );
-}
-
-function VoteCell({ featureId, voted, count }: { featureId: string; voted: boolean; count: number }) {
-  const { vote, isVoting, hasVoted, voteCount } = useVote(featureId, voted, count);
-  return <button onClick={vote} disabled={isVoting}>{hasVoted ? '▲' : '△'} {voteCount}</button>;
-}
-
-function MyFeedbackBox() {
-  const { submit, isSubmitting, isSuccess, error, reset } = useFeedback();
-  // ...
-}
-```
-
 ## Provider Props
 
 | Prop | Type | Required | Description |
