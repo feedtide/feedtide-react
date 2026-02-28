@@ -10,7 +10,29 @@ pnpm add @feedtide/react
 
 ## Quick Start
 
-Drop-in widget (floating button + panel):
+### Standalone (simplest)
+
+For a single widget with no hooks, pass config directly — no provider needed:
+
+```tsx
+import { FeedTideWidget } from '@feedtide/react';
+
+function App() {
+  return (
+    <FeedTideWidget
+      appId="app_abc123"
+      userId="user_456"
+      signature="hmac_sig_here"
+      position="bottom-right"
+      theme="shiny-light"
+    />
+  );
+}
+```
+
+### With Provider
+
+Use the provider when you need hooks (`useFeatures`, `useVote`, `useFeedback`) or multiple components sharing the same config:
 
 ```tsx
 import { FeedTideProvider, FeedTideWidget } from '@feedtide/react';
@@ -21,13 +43,14 @@ function App() {
       appId="app_abc123"
       userId="user_456"
       signature="hmac_sig_here"
-      baseUrl="https://feedtide.com"
     >
       <FeedTideWidget position="bottom-right" theme="shiny-light" />
     </FeedTideProvider>
   );
 }
 ```
+
+Props passed directly to `FeedTideWidget` override provider values, so you can mix both — e.g., use the provider for `appId`/`signature` but override `theme` per-widget.
 
 ## Provider Props
 
@@ -43,7 +66,7 @@ function App() {
 
 ## Components
 
-- **`FeedTideWidget`** — Full floating button + panel (drop-in replacement for the embed script)
+- **`FeedTideWidget`** — Full floating button + panel (drop-in replacement for the embed script). Accepts all provider props directly for standalone use.
 - **`FeatureList`** — Renders all features with vote buttons
 - **`FeatureCard`** — Single feature with status badge and vote button
 - **`FeedbackForm`** — Textarea with submit and success state
@@ -51,7 +74,8 @@ function App() {
 
 ## Hooks
 
-- **`useFeedTide()`** — Access the client, config, and resolved theme
+- **`useFeedTide()`** — Access the client, config, and resolved theme (requires provider)
+- **`useFeedTideOptional()`** — Same as `useFeedTide()` but returns `null` when no provider exists
 - **`useFeatures()`** — `{ features, isLoading, error, refetch }`
 - **`useVote(featureId, initialVoted, initialCount)`** — `{ vote, isVoting, hasVoted, voteCount }` with optimistic updates
 - **`useFeedback()`** — `{ submit, isSubmitting, isSuccess, error, reset }`

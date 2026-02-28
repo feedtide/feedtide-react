@@ -1,5 +1,5 @@
 // Provider
-export { FeedTideProvider, useFeedTide } from "./provider";
+export { FeedTideProvider, useFeedTide, useFeedTideOptional } from "./provider";
 export type { FeedTideProviderProps } from "./provider";
 
 // Components

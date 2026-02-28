@@ -1,13 +1,47 @@
-import { useEffect } from "react";
-import { useFeedTide } from "../provider";
-import type { WidgetPosition } from "../types";
+import { useEffect, useMemo } from "react";
+import { useFeedTideOptional, getAnonymousId } from "../provider";
+import type { FeedTideConfig, WidgetPosition } from "../types";
 
-export interface FeedTideWidgetProps {
+export interface FeedTideWidgetProps extends Partial<FeedTideConfig> {
   position?: WidgetPosition;
 }
 
-export function FeedTideWidget({ position = "bottom-right" }: FeedTideWidgetProps) {
-  const { config } = useFeedTide();
+export function FeedTideWidget({ position = "bottom-right", ...props }: FeedTideWidgetProps) {
+  const ctx = useFeedTideOptional();
+
+  const config = useMemo(() => {
+    const { appId, userId, signature, userEmail, userName, baseUrl, timestamp, theme } = props;
+    const propsConfig: Partial<FeedTideConfig> = {};
+    if (appId !== undefined) propsConfig.appId = appId;
+    if (userId !== undefined) propsConfig.userId = userId;
+    if (signature !== undefined) propsConfig.signature = signature;
+    if (userEmail !== undefined) propsConfig.userEmail = userEmail;
+    if (userName !== undefined) propsConfig.userName = userName;
+    if (baseUrl !== undefined) propsConfig.baseUrl = baseUrl;
+    if (timestamp !== undefined) propsConfig.timestamp = timestamp;
+    if (theme !== undefined) propsConfig.theme = theme;
+
+    const merged: FeedTideConfig = {
+      ...ctx?.config,
+      ...propsConfig,
+    } as FeedTideConfig;
+
+    if (!merged.appId) {
+      throw new Error(
+        "FeedTideWidget requires appId — pass it as a prop or wrap in <FeedTideProvider>"
+      );
+    }
+
+    if (!merged.userId) {
+      merged.userId = getAnonymousId();
+    }
+
+    if (!merged.baseUrl) {
+      merged.baseUrl = "https://feedtide.com";
+    }
+
+    return merged;
+  }, [props.appId, props.userId, props.signature, props.userEmail, props.userName, props.baseUrl, props.timestamp, props.theme, ctx]);
 
   useEffect(() => {
     const baseUrl = config.baseUrl!;

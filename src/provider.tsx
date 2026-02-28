@@ -78,3 +78,9 @@ export function useFeedTide(): FeedTideContextValue {
   }
   return ctx;
 }
+
+export function useFeedTideOptional(): FeedTideContextValue | null {
+  return useContext(FeedTideContext);
+}
+
+export { getAnonymousId };

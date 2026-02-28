@@ -27,7 +27,11 @@
   "scripts": {
     "build": "tsdown",
     "dev": "tsdown --watch",
-    "prepublishOnly": "tsdown"
+    "prepublishOnly": "tsdown",
+    "drypack": "npm pack --dry-run",
+    "release:patch": "npm version patch && npm publish",
+    "release:minor": "npm version minor && npm publish",
+    "release:major": "npm version major && npm publish"
   },
   "peerDependencies": {
     "react": ">=18.0.0",
