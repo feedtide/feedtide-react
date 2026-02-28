@@ -1,6 +1,6 @@
 {
   "name": "@feedtide/react",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "React components and hooks for FeedTide feedback widgets",
   "type": "module",
   "main": "./dist/index.cjs",
