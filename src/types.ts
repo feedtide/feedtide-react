@@ -9,7 +9,7 @@ export interface FeedTideConfig {
   theme?: ThemePresetId | ThemeOverrides;
 }
 
-export type ThemePresetId = "default" | "shiny-light" | "shiny-dark";
+export type ThemePresetId = "light" | "dark" | "system" | "basic";
 
 export interface ThemeOverrides {
   preset?: ThemePresetId;
@@ -22,4 +22,8 @@ export type WidgetPosition =
   | "bottom-right"
   | "bottom-left"
   | "top-right"
-  | "top-left";
+  | "top-left"
+  | "bottom"
+  | "top"
+  | "left"
+  | "right";

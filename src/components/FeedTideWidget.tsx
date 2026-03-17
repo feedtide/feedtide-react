@@ -48,13 +48,12 @@ export function FeedTideWidget({ position = "bottom-right", ...props }: FeedTide
     const script = document.createElement("script");
     script.src = `${baseUrl.replace(/\/$/, "")}/widget/embed.js`;
     script.onload = () => {
-      (window as any).FeedbackWidget?.init({
+      (window as any).Feedtide?.init({
         app_id: config.appId,
         user_id: config.userId,
         signature: config.signature,
         timestamp: config.timestamp || Date.now(),
         position,
-        iframe: true,
         theme: typeof config.theme === "string" ? config.theme : config.theme?.preset,
         user_email: config.userEmail,
         user_name: config.userName,

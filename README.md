@@ -24,7 +24,7 @@ function App() {
       userId="user_456"
       signature="hmac_sig_here"
       position="bottom-right"
-      theme="shiny-light"
+      theme="light"
     />
   );
 }
@@ -62,7 +62,7 @@ Props passed directly to `FeedTideWidget` override provider values, so you can m
 | `userEmail` | `string` | no | Optional user email passed with votes/feedback |
 | `userName` | `string` | no | Optional user name passed with votes/feedback |
 | `baseUrl` | `string` | no | API base URL (defaults to relative, i.e. same origin) |
-| `theme` | `string \| object` | no | `"default"`, `"shiny-light"`, `"shiny-dark"`, or a `ThemeOverrides` object |
+| `theme` | `string \| object` | no | `"system"`, `"light"`, `"dark"`, `"basic`, or a `ThemeOverrides` object |
 
 ## Components
 
@@ -89,7 +89,7 @@ Override specific colors:
 ```tsx
 <FeedTideProvider
   appId="app_abc123"
-  theme={{ preset: "shiny-dark", primaryColor: "#8b5cf6" }}
+  theme={{ preset: "dark", primaryColor: "#8b5cf6" }}
 >
 ```
 
