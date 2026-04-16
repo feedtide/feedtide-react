@@ -44,24 +44,29 @@ export function FeedTideWidget({ position = "bottom-right", ...props }: FeedTide
   }, [props.appId, props.userId, props.signature, props.userEmail, props.userName, props.baseUrl, props.timestamp, props.theme, ctx]);
 
   useEffect(() => {
+    let cancelled = false;
+
     const baseUrl = config.baseUrl!;
     const script = document.createElement("script");
     script.src = `${baseUrl.replace(/\/$/, "")}/widget/embed.js`;
     script.onload = () => {
-      (window as any).Feedtide?.init({
-        app_id: config.appId,
-        user_id: config.userId,
-        signature: config.signature,
-        timestamp: config.timestamp || Date.now(),
-        position,
-        theme: typeof config.theme === "string" ? config.theme : config.theme?.preset,
-        user_email: config.userEmail,
-        user_name: config.userName,
-      });
+      if (!cancelled) {
+        (window as any).Feedtide?.init({
+          app_id: config.appId,
+          user_id: config.userId,
+          signature: config.signature,
+          timestamp: config.timestamp || Date.now(),
+          position,
+          theme: typeof config.theme === "string" ? config.theme : config.theme?.preset,
+          user_email: config.userEmail,
+          user_name: config.userName,
+        });
+      }
     };
     document.head.appendChild(script);
 
     return () => {
+      cancelled = true;
       document.getElementById("feedback-widget-button")?.remove();
       document.getElementById("feedback-widget-iframe")?.remove();
       // Remove the style tag injected by the embed script
