@@ -89,6 +89,12 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
   const themeStr = typeof config.theme === "string" ? config.theme : config.theme?.preset;
   const resolvedTheme = resolveTheme(themeStr);
 
+  // activeTheme is the live theme — synced from the prop, also updated by the
+  // iframe via the setTheme postMessage. Embedded into iframeSrc so a theme
+  // change triggers a full iframe reload (the widget UI initializes from the URL).
+  const [activeTheme, setActiveTheme] = useState(resolvedTheme);
+  useEffect(() => { setActiveTheme(resolvedTheme); }, [resolvedTheme]);
+
   const [isOpen, setIsOpen] = useState(false);
 
   const iframeSrc = useMemo(
@@ -101,9 +107,9 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
         userEmail: config.userEmail,
         userName: config.userName,
         position: resolvedPosition,
-        theme: resolvedTheme,
+        theme: activeTheme,
       }),
-    [config, resolvedPosition, resolvedTheme, hasExplicitUserId],
+    [config, resolvedPosition, activeTheme, hasExplicitUserId],
   );
 
   useProximity(resolvedPosition, isOpen, isPinned);
@@ -165,8 +171,6 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
     }
   }, [resolvedPosition]);
 
-  const [activeTheme, setActiveTheme] = useState(resolvedTheme);
-  useEffect(() => { setActiveTheme(resolvedTheme); }, [resolvedTheme]);
   const handleSetTheme = useCallback((newTheme: string) => {
     if (!(VALID_THEMES as readonly string[]).includes(newTheme)) return;
     setActiveTheme(newTheme === "system" ? resolveTheme("system") : newTheme);
