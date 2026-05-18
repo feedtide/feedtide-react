@@ -13,9 +13,6 @@ export type ThemePresetId = "light" | "dark" | "system" | "basic";
 
 export interface ThemeOverrides {
   preset?: ThemePresetId;
-  primaryColor?: string;
-  backgroundColor?: string;
-  textColor?: string;
 }
 
 export type WidgetPosition =
