@@ -79,7 +79,9 @@ export function WidgetIframe({
   // Listen for postMessages from iframe
   useEffect(() => {
     function handler(event: MessageEvent) {
-      if (event.origin !== origin) return;
+      const iframeWindow = iframeRef.current?.contentWindow;
+      if (!iframeWindow) return;
+      if (event.origin !== origin || event.source !== iframeWindow) return;
       const data = event.data;
       if (!data?.type) return;
 
