@@ -115,29 +115,27 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
   useProximity(resolvedPosition, isOpen, isPinned);
 
   const toggle = useCallback(() => {
-    setIsOpen((prev) => {
-      const next = !prev;
-      const btn = document.getElementById("feedback-widget-button");
-      const posStyles = POSITION_STYLES[resolvedPosition];
-      const mobile = isMobile();
+    const next = !isOpen;
+    setIsOpen(next);
+    const btn = document.getElementById("feedback-widget-button");
+    const posStyles = POSITION_STYLES[resolvedPosition];
+    const mobile = isMobile();
 
-      if (next) {
-        if (!mobile && btn) {
-          btn.style[posStyles.hideAxis] = posStyles.visibleVal;
-          btn.classList.remove("ft-peeking", "ft-peeking-h");
-          btn.classList.add("ft-visible");
-        }
-        trackEvent(config, "widget_open");
-      } else {
-        if (!mobile && !isPinned && btn) {
-          btn.style[posStyles.hideAxis] = posStyles.hiddenVal;
-          btn.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
-        }
-        trackEvent(config, "widget_close");
+    if (next) {
+      if (!mobile && btn) {
+        btn.style[posStyles.hideAxis] = posStyles.visibleVal;
+        btn.classList.remove("ft-peeking", "ft-peeking-h");
+        btn.classList.add("ft-visible");
       }
-      return next;
-    });
-  }, [resolvedPosition, isPinned, config]);
+      trackEvent(config, "widget_open");
+    } else {
+      if (!mobile && !isPinned && btn) {
+        btn.style[posStyles.hideAxis] = posStyles.hiddenVal;
+        btn.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
+      }
+      trackEvent(config, "widget_close");
+    }
+  }, [isOpen, resolvedPosition, isPinned, config]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
