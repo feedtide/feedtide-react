@@ -4,8 +4,12 @@ import { createPortal } from "react-dom";
 // Replicates embed.js popover host + dialog host escalation.
 // - Creates a popover host div in the top layer (if supported)
 // - Watches for modal dialogs via MutationObserver
-// - Escalates to a <dialog> host when modal is detected and widget is open
+// - Escalates by moving a stable wrapper element into a <dialog> when a modal appears
 // - Includes capture-phase click interception for button clicks through modal inertness
+//
+// React always portals into `wrapper` — we relocate `wrapper` between hosts via
+// plain DOM moves. This avoids changing React's portal container, which would
+// remount the subtree (duplicating nodes / losing iframe state).
 
 const popoverSupported =
   typeof HTMLElement !== "undefined" &&
@@ -19,44 +23,54 @@ interface WidgetPortalProps {
 export function WidgetPortal({ children, isOpen }: WidgetPortalProps) {
   const hostRef = useRef<HTMLDivElement | null>(null);
   const dialogRef = useRef<HTMLDialogElement | null>(null);
+  const wrapperRef = useRef<HTMLDivElement | null>(null);
   const [container, setContainer] = useState<HTMLElement | null>(null);
 
-  // Create popover host on mount
+  // Create popover host + stable wrapper on mount
   useEffect(() => {
+    const wrapper = document.createElement("div");
+    wrapper.id = "feedtide-portal-wrapper";
+    wrapper.style.cssText = "display:contents;";
+    wrapperRef.current = wrapper;
+
     if (popoverSupported) {
       const host = document.createElement("div");
       host.id = "feedtide-popover-host";
       host.setAttribute("popover", "manual");
       host.style.cssText =
         "position:fixed; inset:0; margin:0; padding:0; border:none; background:transparent; pointer-events:none;";
+      host.appendChild(wrapper);
       document.body.appendChild(host);
       try { host.showPopover(); } catch { /* noop */ }
 
-      // Inject child pointer-events style
       const style = document.createElement("style");
       style.textContent = `
-        #feedtide-popover-host > * { pointer-events: auto; }
+        #feedtide-portal-wrapper > * { pointer-events: auto; }
         #feedtide-dialog-host {
           background: transparent; border: none; margin: 0; padding: 0;
           position: fixed; inset: 0; width: 100vw; height: 100vh;
           max-width: 100vw; max-height: 100vh; overflow: visible; pointer-events: none;
         }
         #feedtide-dialog-host::backdrop { background: transparent; }
-        #feedtide-dialog-host > * { pointer-events: auto; }
       `;
       document.head.appendChild(style);
 
       hostRef.current = host;
-      setContainer(host);
+      setContainer(wrapper);
 
       return () => {
         host.remove();
         style.remove();
         hostRef.current = null;
+        wrapperRef.current = null;
       };
     } else {
-      // Fallback: use document.body
-      setContainer(document.body);
+      document.body.appendChild(wrapper);
+      setContainer(wrapper);
+      return () => {
+        wrapper.remove();
+        wrapperRef.current = null;
+      };
     }
   }, []);
 
@@ -75,38 +89,38 @@ export function WidgetPortal({ children, isOpen }: WidgetPortalProps) {
 
     function escalate() {
       if (dialogRef.current) return;
+      const wrapper = wrapperRef.current;
+      const host = hostRef.current;
+      if (!wrapper || !host) return;
+
       const dialog = document.createElement("dialog");
       dialog.id = "feedtide-dialog-host";
-
-      // Move all children from popover host to dialog
-      const host = hostRef.current!;
-      while (host.firstChild) dialog.appendChild(host.firstChild);
-      try { host.hidePopover(); } catch { /* noop */ }
-
       document.body.appendChild(dialog);
       try {
         dialog.showModal();
         dialog.addEventListener("cancel", (e) => e.preventDefault());
+        // Move the stable wrapper into the dialog. React's portal target is
+        // still `wrapper`, so React doesn't unmount/remount anything.
+        dialog.appendChild(wrapper);
+        try { host.hidePopover(); } catch { /* noop */ }
         dialogRef.current = dialog;
-        setContainer(dialog);
       } catch {
-        // Fallback: move children back
-        while (dialog.firstChild) host.appendChild(dialog.firstChild);
         dialog.remove();
-        try { host.showPopover(); } catch { /* noop */ }
       }
     }
 
     function deescalate() {
       if (!dialogRef.current) return;
-      const host = hostRef.current!;
+      const wrapper = wrapperRef.current;
+      const host = hostRef.current;
       const dialog = dialogRef.current;
-      while (dialog.firstChild) host.appendChild(dialog.firstChild);
+      if (!wrapper || !host) return;
+
+      host.appendChild(wrapper);
       try { dialog.close(); } catch { /* noop */ }
       dialog.remove();
       dialogRef.current = null;
       try { host.showPopover(); } catch { /* noop */ }
-      setContainer(host);
     }
 
     function checkModalState() {
