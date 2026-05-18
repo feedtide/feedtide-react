@@ -30,7 +30,7 @@ export function useProximity(
     const visibleVal = posStyles.visibleVal;
     let ticking = false;
 
-    // Intro: button starts visible, shys away after 2s
+    // Intro: button starts visible, shies away after 2s
     introCompleteRef.current = false;
     const introTimer = setTimeout(() => {
       introCompleteRef.current = true;
