@@ -111,6 +111,7 @@ export function WidgetIframe({
     <iframe
       ref={iframeRef}
       id="feedback-widget-iframe"
+      title="Feedback widget"
       src={src}
       onLoad={handleLoad}
     />
