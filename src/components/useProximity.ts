@@ -15,6 +15,12 @@ export function useProximity(
   isPinned: boolean,
 ) {
   const introCompleteRef = useRef(false);
+  const isOpenRef = useRef(isOpen);
+  const isPinnedRef = useRef(isPinned);
+  // Track latest values without re-running the main effect — otherwise
+  // every open/close/pin toggle would restart the 2s intro timer.
+  isOpenRef.current = isOpen;
+  isPinnedRef.current = isPinned;
 
   useEffect(() => {
     if (isMobile()) return;
@@ -34,7 +40,7 @@ export function useProximity(
     introCompleteRef.current = false;
     const introTimer = setTimeout(() => {
       introCompleteRef.current = true;
-      if (!isOpen && !isPinned) {
+      if (!isOpenRef.current && !isPinnedRef.current) {
         el.style[axis] = hiddenVal;
         el.classList.remove("ft-visible");
       }
@@ -51,7 +57,7 @@ export function useProximity(
     }
 
     function update(dist: number) {
-      if (isOpen || isPinned || !introCompleteRef.current) return;
+      if (isOpenRef.current || isPinnedRef.current || !introCompleteRef.current) return;
       if (dist < 80) {
         el.style[axis] = visibleVal;
         el.classList.remove("ft-peeking", "ft-peeking-h");
@@ -77,7 +83,7 @@ export function useProximity(
     }
 
     function onMouseLeave() {
-      if (!isOpen && !isPinned && introCompleteRef.current) {
+      if (!isOpenRef.current && !isPinnedRef.current && introCompleteRef.current) {
         el.style[axis] = hiddenVal;
         el.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
       }
@@ -91,5 +97,5 @@ export function useProximity(
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseleave", onMouseLeave);
     };
-  }, [position, isOpen, isPinned]);
+  }, [position]);
 }
