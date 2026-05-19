@@ -3,6 +3,7 @@ import type { FeedTideConfig } from "./types";
 
 interface FeedTideContextValue {
   config: FeedTideConfig;
+  hasExplicitUserId: boolean;
 }
 
 const FeedTideContext = createContext<FeedTideContextValue | null>(null);
@@ -48,6 +49,7 @@ export function FeedTideProvider({
   theme,
 }: FeedTideProviderProps) {
   const resolvedUserId = userId || getAnonymousId();
+  const hasExplicitUserId = !!userId;
 
   const value = useMemo<FeedTideContextValue>(() => {
     return {
@@ -61,8 +63,9 @@ export function FeedTideProvider({
         timestamp,
         theme,
       },
+      hasExplicitUserId,
     };
-  }, [appId, resolvedUserId, signature, userEmail, userName, baseUrl, timestamp, theme]);
+  }, [appId, resolvedUserId, hasExplicitUserId, signature, userEmail, userName, baseUrl, timestamp, theme]);
 
   return (
     <FeedTideContext.Provider value={value}>
