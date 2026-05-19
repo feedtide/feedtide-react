@@ -54,7 +54,7 @@ export function FeedTideWidget({ mode = "remote", position: configPosition = "bo
     <EmbeddedWidget
       config={config}
       configPosition={configPosition}
-      hasExplicitUserId={!!(props.userId || ctx?.config.userId)}
+      hasExplicitUserId={!!props.userId || !!ctx?.hasExplicitUserId}
     />
   );
 }
