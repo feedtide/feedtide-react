@@ -10,6 +10,7 @@ import type { WidgetPosition } from "../types";
 // - Skipped on touch devices and when widget is open or pinned
 
 export function useProximity(
+  maybeEl: HTMLElement | null,
   position: WidgetPosition,
   isOpen: boolean,
   isPinned: boolean,
@@ -23,10 +24,7 @@ export function useProximity(
   isPinnedRef.current = isPinned;
 
   useEffect(() => {
-    if (isMobile()) return;
-
-    const maybeEl = document.getElementById("feedback-widget-button");
-    if (!maybeEl) return;
+    if (!maybeEl || isMobile()) return;
     const el: HTMLElement = maybeEl;
 
     const posStyles = POSITION_STYLES[position];
@@ -97,5 +95,5 @@ export function useProximity(
       document.removeEventListener("mousemove", onMouseMove);
       document.removeEventListener("mouseleave", onMouseLeave);
     };
-  }, [position]);
+  }, [maybeEl, position]);
 }

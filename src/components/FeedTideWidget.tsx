@@ -86,6 +86,10 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
 
   const [isPinned, setIsPinned] = useState(() => getStoredPin() ?? false);
 
+  // Track the button element via callback ref so effects re-run when it mounts.
+  // (The button is portaled, so on first render it isn't yet in the DOM.)
+  const [buttonEl, setButtonEl] = useState<HTMLButtonElement | null>(null);
+
   const themeStr = typeof config.theme === "string" ? config.theme : config.theme?.preset;
   const resolvedTheme = resolveTheme(themeStr);
 
@@ -112,41 +116,39 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
     [config, resolvedPosition, activeTheme, hasExplicitUserId],
   );
 
-  useProximity(resolvedPosition, isOpen, isPinned);
+  useProximity(buttonEl, resolvedPosition, isOpen, isPinned);
 
   const toggle = useCallback(() => {
     const next = !isOpen;
     setIsOpen(next);
-    const btn = document.getElementById("feedback-widget-button");
     const posStyles = POSITION_STYLES[resolvedPosition];
     const mobile = isMobile();
 
     if (next) {
-      if (!mobile && btn) {
-        btn.style[posStyles.hideAxis] = posStyles.visibleVal;
-        btn.classList.remove("ft-peeking", "ft-peeking-h");
-        btn.classList.add("ft-visible");
+      if (!mobile && buttonEl) {
+        buttonEl.style[posStyles.hideAxis] = posStyles.visibleVal;
+        buttonEl.classList.remove("ft-peeking", "ft-peeking-h");
+        buttonEl.classList.add("ft-visible");
       }
       trackEvent(config, "widget_open");
     } else {
-      if (!mobile && !isPinned && btn) {
-        btn.style[posStyles.hideAxis] = posStyles.hiddenVal;
-        btn.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
+      if (!mobile && !isPinned && buttonEl) {
+        buttonEl.style[posStyles.hideAxis] = posStyles.hiddenVal;
+        buttonEl.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
       }
       trackEvent(config, "widget_close");
     }
-  }, [isOpen, resolvedPosition, isPinned, config]);
+  }, [isOpen, resolvedPosition, isPinned, config, buttonEl]);
 
   const handleClose = useCallback(() => {
     setIsOpen(false);
-    const btn = document.getElementById("feedback-widget-button");
     const posStyles = POSITION_STYLES[resolvedPosition];
-    if (!isMobile() && !isPinned && btn) {
-      btn.style[posStyles.hideAxis] = posStyles.hiddenVal;
-      btn.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
+    if (!isMobile() && !isPinned && buttonEl) {
+      buttonEl.style[posStyles.hideAxis] = posStyles.hiddenVal;
+      buttonEl.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
     }
     trackEvent(config, "widget_close");
-  }, [resolvedPosition, isPinned, config]);
+  }, [resolvedPosition, isPinned, config, buttonEl]);
 
   const handleSetSize = useCallback((newSize: WidgetSize) => {
     if (isMobile()) return;
@@ -158,16 +160,13 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
   const handleSetPinned = useCallback((pinned: boolean) => {
     setIsPinned(pinned);
     storePin(pinned);
-    if (pinned) {
-      const btn = document.getElementById("feedback-widget-button");
+    if (pinned && buttonEl) {
       const posStyles = POSITION_STYLES[resolvedPosition];
-      if (btn) {
-        btn.style[posStyles.hideAxis] = posStyles.visibleVal;
-        btn.classList.remove("ft-peeking", "ft-peeking-h");
-        btn.classList.add("ft-visible");
-      }
+      buttonEl.style[posStyles.hideAxis] = posStyles.visibleVal;
+      buttonEl.classList.remove("ft-peeking", "ft-peeking-h");
+      buttonEl.classList.add("ft-visible");
     }
-  }, [resolvedPosition]);
+  }, [resolvedPosition, buttonEl]);
 
   const handleSetTheme = useCallback((newTheme: string) => {
     if (!(VALID_THEMES as readonly string[]).includes(newTheme)) return;
@@ -178,29 +177,28 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
     function handleClick(e: MouseEvent) {
       if (!isOpen || isPinned) return;
       const iframe = document.getElementById("feedback-widget-iframe");
-      const btn = document.getElementById("feedback-widget-button");
       if (e.target === iframe || iframe?.contains(e.target as Node)) return;
-      if (e.target === btn || btn?.contains(e.target as Node)) return;
+      if (e.target === buttonEl || buttonEl?.contains(e.target as Node)) return;
       handleClose();
     }
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
-  }, [isOpen, isPinned, handleClose]);
+  }, [isOpen, isPinned, handleClose, buttonEl]);
 
+  // Pinned init: ensure button starts visible. Runs when buttonEl becomes
+  // available (callback ref) so initial-pin state is applied even though
+  // the button mounts after the parent effect would otherwise have run.
   useEffect(() => {
-    if (isPinned) {
-      const btn = document.getElementById("feedback-widget-button");
+    if (isPinned && buttonEl) {
       const posStyles = POSITION_STYLES[resolvedPosition];
-      if (btn) {
-        btn.style[posStyles.hideAxis] = posStyles.visibleVal;
-        btn.classList.add("ft-visible");
-      }
+      buttonEl.style[posStyles.hideAxis] = posStyles.visibleVal;
+      buttonEl.classList.add("ft-visible");
     }
-  }, []);
+  }, [buttonEl, isPinned, resolvedPosition]);
 
   return (
     <WidgetPortal isOpen={isOpen}>
-      <WidgetButton position={resolvedPosition} onClick={toggle} />
+      <WidgetButton ref={setButtonEl} position={resolvedPosition} onClick={toggle} />
       <WidgetIframe
         src={iframeSrc}
         baseUrl={config.baseUrl!}

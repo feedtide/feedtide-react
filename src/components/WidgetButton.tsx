@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { forwardRef, useEffect, useRef } from "react";
 import { POSITION_STYLES } from "../constants";
 import type { WidgetPosition } from "../types";
 
@@ -118,61 +118,63 @@ interface WidgetButtonProps {
   onClick: () => void;
 }
 
-export function WidgetButton({ position, onClick }: WidgetButtonProps) {
-  const styleRef = useRef<HTMLStyleElement | null>(null);
-  const axis = POSITION_STYLES[position].hideAxis;
+export const WidgetButton = forwardRef<HTMLButtonElement, WidgetButtonProps>(
+  function WidgetButton({ position, onClick }, ref) {
+    const styleRef = useRef<HTMLStyleElement | null>(null);
+    const axis = POSITION_STYLES[position].hideAxis;
 
-  // Inject styles into <head> (mirrors embed.js approach for ID-based selectors)
-  useEffect(() => {
-    const style = document.createElement("style");
-    style.textContent = buildButtonCSS(position);
-    document.head.appendChild(style);
-    styleRef.current = style;
-    return () => {
-      style.remove();
-    };
-  }, [position]);
+    // Inject styles into <head> (mirrors embed.js approach for ID-based selectors)
+    useEffect(() => {
+      const style = document.createElement("style");
+      style.textContent = buildButtonCSS(position);
+      document.head.appendChild(style);
+      styleRef.current = style;
+      return () => {
+        style.remove();
+      };
+    }, [position]);
 
-  const arrowSvg = (
-    <svg
-      viewBox="0 0 12 8"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
-      style={{ transform: `rotate(${ARROW_ROTATION[axis]}deg)` }}
-    >
-      <path
-        d="M1.5 6.5L6 2L10.5 6.5"
-        stroke="white"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
+    const arrowSvg = (
+      <svg
+        viewBox="0 0 12 8"
+        fill="none"
+        xmlns="http://www.w3.org/2000/svg"
+        style={{ transform: `rotate(${ARROW_ROTATION[axis]}deg)` }}
+      >
+        <path
+          d="M1.5 6.5L6 2L10.5 6.5"
+          stroke="white"
+          strokeWidth="2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+      </svg>
+    );
 
-  return (
-    <button id="feedback-widget-button" className="ft-visible" onClick={onClick}>
-      <span className="feedback-icon">
-        <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-          <circle cx="12" cy="11" r="9" stroke="#ffffff" strokeWidth="2" fill="none" />
-          <path d="M6 18.5 L9 15" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
-          <path
-            d="M5 9.5c1.5-1.5 3-2 4.5-2s3 1.5 4.5 1.5 3-1.5 4.5-1.5"
-            stroke="#ffffff"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-          />
-          <path
-            d="M5 13c1.5-1.5 3-2 4.5-2s3 1.5 4.5 1.5 3-1.5 4.5-1.5"
-            stroke="#ffffff"
-            strokeWidth="1.8"
-            strokeLinecap="round"
-            opacity="0.6"
-          />
-        </svg>
-      </span>
-      <span className="feedback-text">Feedtide</span>
-      <span className="ft-arrow">{arrowSvg}</span>
-    </button>
-  );
-}
+    return (
+      <button ref={ref} id="feedback-widget-button" className="ft-visible" onClick={onClick}>
+        <span className="feedback-icon">
+          <svg viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <circle cx="12" cy="11" r="9" stroke="#ffffff" strokeWidth="2" fill="none" />
+            <path d="M6 18.5 L9 15" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" />
+            <path
+              d="M5 9.5c1.5-1.5 3-2 4.5-2s3 1.5 4.5 1.5 3-1.5 4.5-1.5"
+              stroke="#ffffff"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+            />
+            <path
+              d="M5 13c1.5-1.5 3-2 4.5-2s3 1.5 4.5 1.5 3-1.5 4.5-1.5"
+              stroke="#ffffff"
+              strokeWidth="1.8"
+              strokeLinecap="round"
+              opacity="0.6"
+            />
+          </svg>
+        </span>
+        <span className="feedback-text">Feedtide</span>
+        <span className="ft-arrow">{arrowSvg}</span>
+      </button>
+    );
+  }
+);
