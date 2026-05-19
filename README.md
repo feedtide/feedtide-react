@@ -64,6 +64,19 @@ Props passed directly to `FeedTideWidget` override provider values, so you can m
 | `baseUrl` | `string` | no | API base URL (defaults to relative, i.e. same origin) |
 | `theme` | `string \| object` | no | `"system"`, `"light"`, `"dark"`, `"basic`, or a `ThemeOverrides` object |
 
+## Widget Props
+
+`FeedTideWidget` accepts all provider props above, plus:
+
+| Prop | Type | Default | Description |
+|------|------|---------|-------------|
+| `position` | `string` | `"bottom-right"` | Anchor position for the floating button (e.g. `"bottom-right"`, `"top-left"`) |
+| `native` | `boolean` | `false` | When `false` (default), loads the remote `embed.js` script. When `true`, renders a self-contained React widget — CSP-safe, no remote scripts, works in Chrome extensions and other restricted environments |
+
+```tsx
+<FeedTideWidget appId="app_abc123" native />
+```
+
 ## Components
 
 - **`FeedTideWidget`** — Full floating button + panel (drop-in replacement for the embed script). Accepts all provider props directly for standalone use.

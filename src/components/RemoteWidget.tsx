@@ -30,7 +30,7 @@ export function RemoteWidget({ config, position }: RemoteWidgetProps) {
     script.onerror = () => {
       console.error(
         "[FeedTideWidget] Failed to load remote embed.js — this is likely a CSP (Content Security Policy) restriction. " +
-        'Use <FeedTideWidget mode="embedded" /> for a CSP-safe self-contained widget that works in Chrome extensions and restricted environments.'
+        "Use <FeedTideWidget native /> for a CSP-safe self-contained widget that works in Chrome extensions and restricted environments."
       );
     };
     document.head.appendChild(script);

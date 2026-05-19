@@ -13,4 +13,4 @@ export type {
   ThemeOverrides,
   WidgetPosition,
 } from "./types";
-export type { WidgetMode, WidgetSize } from "./types";
+export type { WidgetSize } from "./types";

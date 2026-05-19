@@ -27,8 +27,6 @@ export type WidgetPosition =
 
 export type WidgetSize = "small" | "centered" | "maximise";
 
-export type WidgetMode = "embedded" | "remote";
-
 export interface PositionStyles {
   button: string;
   buttonHidden: string;

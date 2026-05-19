@@ -17,14 +17,14 @@ import { WidgetIframe } from "./WidgetIframe";
 import { WidgetPortal } from "./WidgetPortal";
 import { RemoteWidget } from "./RemoteWidget";
 import { useProximity } from "./useProximity";
-import type { FeedTideConfig, WidgetMode, WidgetPosition, WidgetSize } from "../types";
+import type { FeedTideConfig, WidgetPosition, WidgetSize } from "../types";
 
 export interface FeedTideWidgetProps extends Partial<FeedTideConfig> {
-  mode?: WidgetMode;
+  native?: boolean;
   position?: WidgetPosition;
 }
 
-export function FeedTideWidget({ mode = "remote", position: configPosition = "bottom-right", ...props }: FeedTideWidgetProps) {
+export function FeedTideWidget({ native = false, position: configPosition = "bottom-right", ...props }: FeedTideWidgetProps) {
   const ctx = useFeedTideOptional();
 
   const config = useMemo(() => {
@@ -46,7 +46,7 @@ export function FeedTideWidget({ mode = "remote", position: configPosition = "bo
     return merged;
   }, [props.appId, props.userId, props.signature, props.userEmail, props.userName, props.baseUrl, props.timestamp, props.theme, ctx]);
 
-  if (mode === "remote") {
+  if (!native) {
     return <RemoteWidget config={config} position={configPosition} />;
   }
 
