@@ -222,6 +222,7 @@ export function WidgetPortal({ children, isOpen }: WidgetPortalProps) {
       document.removeEventListener("pointerdown", onPointerDown, true);
       document.removeEventListener("click", onClickCapture, true);
       document.removeEventListener("mousemove", onMouseMoveCapture, true);
+      if (cursorOverride) document.documentElement.style.cursor = "";
       if (dialogRef.current) {
         try { dialogRef.current.close(); } catch { /* noop */ }
         dialogRef.current.remove();
