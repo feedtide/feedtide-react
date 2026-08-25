@@ -11,6 +11,22 @@ import { createPortal } from "react-dom";
 // plain DOM moves. This avoids changing React's portal container, which would
 // remount the subtree (duplicating nodes / losing iframe state).
 
+export const POPOVER_HOST_ID = "feedtide-popover-host";
+export const DIALOG_HOST_ID = "feedtide-dialog-host";
+export const PORTAL_WRAPPER_ID = "feedtide-portal-wrapper";
+
+/**
+ * Live lookup of the portal hosts. The dialog host is created and destroyed as
+ * host-page modals come and go, so call this at use time — never snapshot it.
+ */
+export function getPortalHosts() {
+  return {
+    popoverHost: document.getElementById(POPOVER_HOST_ID),
+    dialogHost: document.getElementById(DIALOG_HOST_ID) as HTMLDialogElement | null,
+    wrapper: document.getElementById(PORTAL_WRAPPER_ID),
+  };
+}
+
 const popoverSupported =
   typeof HTMLElement !== "undefined" &&
   typeof HTMLElement.prototype.showPopover === "function";
@@ -29,13 +45,13 @@ export function WidgetPortal({ children, isOpen }: WidgetPortalProps) {
   // Create popover host + stable wrapper on mount
   useEffect(() => {
     const wrapper = document.createElement("div");
-    wrapper.id = "feedtide-portal-wrapper";
+    wrapper.id = PORTAL_WRAPPER_ID;
     wrapper.style.cssText = "display:contents;";
     wrapperRef.current = wrapper;
 
     if (popoverSupported) {
       const host = document.createElement("div");
-      host.id = "feedtide-popover-host";
+      host.id = POPOVER_HOST_ID;
       host.setAttribute("popover", "manual");
       host.style.cssText =
         "position:fixed; inset:0; margin:0; padding:0; border:none; background:transparent; pointer-events:none;";
@@ -94,7 +110,7 @@ export function WidgetPortal({ children, isOpen }: WidgetPortalProps) {
       if (!wrapper || !host) return;
 
       const dialog = document.createElement("dialog");
-      dialog.id = "feedtide-dialog-host";
+      dialog.id = DIALOG_HOST_ID;
       document.body.appendChild(dialog);
       try {
         dialog.showModal();

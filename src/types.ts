@@ -7,6 +7,15 @@ export interface FeedTideConfig {
   baseUrl?: string;
   timestamp?: number;
   theme?: ThemePresetId | ThemeOverrides;
+  /**
+   * Load html2canvas from `{baseUrl}/widget/html2canvas.min.js` instead of the
+   * copy bundled with this package. Falls back to the bundled copy (with a
+   * console warning) if the remote script fails to load.
+   *
+   * This does not reduce bundle size — the dynamic import still emits a chunk,
+   * it just never gets fetched.
+   */
+  remoteCaptureLibrary?: boolean;
 }
 
 export type ThemePresetId = "light" | "dark" | "system" | "basic";

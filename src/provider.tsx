@@ -47,6 +47,7 @@ export function FeedTideProvider({
   baseUrl = "https://feedtide.com",
   timestamp,
   theme,
+  remoteCaptureLibrary,
 }: FeedTideProviderProps) {
   const resolvedUserId = userId || getAnonymousId();
   const hasExplicitUserId = !!userId;
@@ -62,10 +63,11 @@ export function FeedTideProvider({
         baseUrl,
         timestamp,
         theme,
+        remoteCaptureLibrary,
       },
       hasExplicitUserId,
     };
-  }, [appId, resolvedUserId, hasExplicitUserId, signature, userEmail, userName, baseUrl, timestamp, theme]);
+  }, [appId, resolvedUserId, hasExplicitUserId, signature, userEmail, userName, baseUrl, timestamp, theme, remoteCaptureLibrary]);
 
   return (
     <FeedTideContext.Provider value={value}>
