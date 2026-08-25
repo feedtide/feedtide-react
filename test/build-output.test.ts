@@ -39,8 +39,15 @@ describe("dist output", () => {
   });
 
   it("does not leak html2canvas types into the declarations", () => {
-    expect(read("index.d.ts")).not.toContain("html2canvas");
-    expect(read("index.d.cts")).not.toContain("html2canvas");
+    // Matching the bare word would trip over doc comments that name the
+    // library; what must not appear is a reference to the module or its
+    // declarations inlined by dts.resolve.
+    for (const file of ["index.d.ts", "index.d.cts"]) {
+      const dts = read(file);
+      expect(dts, file).not.toMatch(/from\s*["']html2canvas["']/);
+      expect(dts, file).not.toMatch(/import\s*\(\s*["']html2canvas["']\s*\)/);
+      expect(dts, file).not.toMatch(/declare\s+(?:function|const|class|namespace)\s+html2canvas/);
+    }
   });
 
   it("loads without a DOM", async () => {

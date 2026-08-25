@@ -63,6 +63,7 @@ Props passed directly to `FeedTideWidget` override provider values, so you can m
 | `userName` | `string` | no | Optional user name passed with votes/feedback |
 | `baseUrl` | `string` | no | API base URL (defaults to relative, i.e. same origin) |
 | `theme` | `string \| object` | no | `"system"`, `"light"`, `"dark"`, `"basic`, or a `ThemeOverrides` object |
+| `remoteCaptureLibrary` | `boolean` | no | Load the screenshot library from `{baseUrl}/widget/html2canvas.min.js` instead of the bundled copy. See [Screenshots](#screenshots) |
 
 ## Widget Props
 
@@ -72,6 +73,7 @@ Props passed directly to `FeedTideWidget` override provider values, so you can m
 |------|------|---------|-------------|
 | `position` | `string` | `"bottom-right"` | Anchor position for the floating button (e.g. `"bottom-right"`, `"top-left"`) |
 | `native` | `boolean` | `false` | When `false` (default), loads the remote `embed.js` script. When `true`, renders a self-contained React widget — CSP-safe, no remote scripts, works in Chrome extensions and other restricted environments |
+| `remoteCaptureLibrary` | `boolean` | `false` | Overrides the provider value. See [Screenshots](#screenshots) |
 
 ```tsx
 <FeedTideWidget appId="app_abc123" native />
@@ -86,6 +88,25 @@ a dynamic `import()`, so your bundler splits it into its own chunk and nothing i
 downloaded until someone actually takes a screenshot. Both `native` and the
 default remote path use the bundled copy — no cross-origin script, and nothing
 that a `script-src 'self'` policy will block.
+
+### Using the server's copy instead
+
+Set `remoteCaptureLibrary` to go back to fetching `{baseUrl}/widget/html2canvas.min.js`,
+the way `embed.js` does on its own. It works on both paths — `native` injects the
+script itself, and the default path simply stops handing `embed.js` a loader.
+
+```tsx
+<FeedTideWidget appId="app_abc123" remoteCaptureLibrary />
+```
+
+Reach for it when your bundler can't code-split, or when you'd rather the
+screenshot library track whatever `feedtide.com` serves than a version pinned in
+your lockfile. If the remote script fails to load, the capture falls back to the
+bundled copy and logs a warning rather than failing.
+
+Note this doesn't shrink your bundle: the dynamic `import()` still exists in the
+source, so your bundler still emits the chunk — the flag only stops it being
+fetched.
 
 **Chrome extensions (MV3):** content scripts can't use dynamic `import()` unless
 the chunk is listed in `web_accessible_resources`. The usual fix is to build with

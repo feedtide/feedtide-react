@@ -17,6 +17,7 @@ interface WidgetIframeProps {
   onSetSize: (size: WidgetSize) => void;
   onSetPinned: (pinned: boolean) => void;
   onSetTheme: (theme: string) => void;
+  remoteCaptureLibrary?: boolean;
 }
 
 export function WidgetIframe({
@@ -31,6 +32,7 @@ export function WidgetIframe({
   onSetSize,
   onSetPinned,
   onSetTheme,
+  remoteCaptureLibrary,
 }: WidgetIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const capturingRef = useRef(false);
@@ -91,11 +93,15 @@ export function WidgetIframe({
     if (!iframe) return;
     capturingRef.current = true;
     try {
-      const buffer = await captureScreenshot(() => ({
-        iframe,
-        button: document.getElementById("feedback-widget-button"),
-        ...getPortalHosts(),
-      }));
+      const buffer = await captureScreenshot(
+        () => ({
+          iframe,
+          button: document.getElementById("feedback-widget-button"),
+          ...getPortalHosts(),
+        }),
+        // baseUrl, not `origin`: loadRemote strips the trailing slash itself.
+        { baseUrl, remoteLibrary: remoteCaptureLibrary },
+      );
       // Re-read contentWindow: an unmount mid-capture should be a no-op, not a
       // post into a dead window. Transferring detaches `buffer` — don't reuse it.
       iframeRef.current?.contentWindow?.postMessage(
@@ -114,7 +120,7 @@ export function WidgetIframe({
     } finally {
       capturingRef.current = false;
     }
-  }, [origin]);
+  }, [origin, baseUrl, remoteCaptureLibrary]);
 
   // Listen for postMessages from iframe
   useEffect(() => {

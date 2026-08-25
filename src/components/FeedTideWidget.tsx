@@ -28,7 +28,7 @@ export function FeedTideWidget({ native = false, position: configPosition = "bot
   const ctx = useFeedTideOptional();
 
   const config = useMemo(() => {
-    const { appId, userId, signature, userEmail, userName, baseUrl, timestamp, theme } = props;
+    const { appId, userId, signature, userEmail, userName, baseUrl, timestamp, theme, remoteCaptureLibrary } = props;
     const propsConfig: Partial<FeedTideConfig> = {};
     if (appId !== undefined) propsConfig.appId = appId;
     if (userId !== undefined) propsConfig.userId = userId;
@@ -38,13 +38,14 @@ export function FeedTideWidget({ native = false, position: configPosition = "bot
     if (baseUrl !== undefined) propsConfig.baseUrl = baseUrl;
     if (timestamp !== undefined) propsConfig.timestamp = timestamp;
     if (theme !== undefined) propsConfig.theme = theme;
+    if (remoteCaptureLibrary !== undefined) propsConfig.remoteCaptureLibrary = remoteCaptureLibrary;
 
     const merged: FeedTideConfig = { ...ctx?.config, ...propsConfig } as FeedTideConfig;
     if (!merged.appId) throw new Error("FeedTideWidget requires appId — pass it as a prop or wrap in <FeedTideProvider>");
     if (!merged.userId) merged.userId = getAnonymousId();
     if (!merged.baseUrl) merged.baseUrl = DEFAULT_BASE_URL;
     return merged;
-  }, [props.appId, props.userId, props.signature, props.userEmail, props.userName, props.baseUrl, props.timestamp, props.theme, ctx]);
+  }, [props.appId, props.userId, props.signature, props.userEmail, props.userName, props.baseUrl, props.timestamp, props.theme, props.remoteCaptureLibrary, ctx]);
 
   if (!native) {
     return <RemoteWidget config={config} position={configPosition} />;
@@ -211,6 +212,7 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
         onSetSize={handleSetSize}
         onSetPinned={handleSetPinned}
         onSetTheme={handleSetTheme}
+        remoteCaptureLibrary={config.remoteCaptureLibrary}
       />
     </WidgetPortal>
   );

@@ -1,4 +1,6 @@
-// Port of embed.js `captureScreenshot`, minus the remote script tag.
+// Port of embed.js `captureScreenshot`. The screenshot library is bundled and
+// lazily imported by default; `remoteCaptureLibrary` opts back into embed.js's
+// server-hosted script.
 //
 // embed.js hides the widget by mutating the live DOM (display:none on the
 // iframe and button, then dialogHost.close() / popoverHost.hidePopover()).
@@ -30,11 +32,76 @@ export interface ScreenshotContext {
   wrapper: HTMLElement | null;
 }
 
+export interface CaptureOptions {
+  /** Origin the remote library would be served from. */
+  baseUrl: string;
+  /**
+   * Prefer `{baseUrl}/widget/html2canvas.min.js` over the bundled copy. Falls
+   * back to the bundled copy if that script fails to load.
+   */
+  remoteLibrary?: boolean;
+}
+
+async function loadBundled(): Promise<Html2Canvas> {
+  const mod = await import("html2canvas");
+  // Bundlers disagree about whether the callable is the namespace or its
+  // default export, depending on how they interop the UMD build.
+  const fn = ((mod as unknown as { default?: Html2Canvas }).default ??
+    mod) as Html2Canvas;
+  if (typeof fn !== "function") throw new Error("not callable");
+  return fn;
+}
+
+// Keyed by baseUrl so repeat captures reuse one script tag, and so a second
+// origin isn't served a promise for the first one's script.
+const remoteLoads = new Map<string, Promise<Html2Canvas>>();
+
+function loadRemote(baseUrl: string): Promise<Html2Canvas> {
+  const src = `${baseUrl.replace(/\/$/, "")}/widget/html2canvas.min.js`;
+  const cached = remoteLoads.get(src);
+  if (cached) return cached;
+
+  const pending = new Promise<Html2Canvas>((resolve, reject) => {
+    const script = document.createElement("script");
+    script.src = src;
+    script.onload = () => {
+      // The UMD bundle assigns itself to the global; same as embed.js.
+      const fn = (window as unknown as { html2canvas?: Html2Canvas }).html2canvas;
+      if (typeof fn === "function") resolve(fn);
+      else reject(new Error("not callable"));
+    };
+    script.onerror = () => reject(new Error(`failed to load ${src}`));
+    document.head.appendChild(script);
+  });
+
+  // Don't let one transient failure poison every later attempt.
+  pending.catch(() => remoteLoads.delete(src));
+  remoteLoads.set(src, pending);
+  return pending;
+}
+
+async function loadHtml2Canvas(options: CaptureOptions): Promise<Html2Canvas> {
+  if (options.remoteLibrary) {
+    try {
+      return await loadRemote(options.baseUrl);
+    } catch {
+      console.warn(
+        "[FeedTideWidget] remoteCaptureLibrary is set but " +
+          `${options.baseUrl.replace(/\/$/, "")}/widget/html2canvas.min.js could not be loaded — ` +
+          "falling back to the bundled copy.",
+      );
+    }
+  }
+  return loadBundled();
+}
+
 /**
  * Captures the host page as a PNG, resolving with a transferable ArrayBuffer.
  *
  * Rejects with an Error whose message is one of embed.js's four strings — the
  * widget UI surfaces it verbatim as a toast, so both paths must read alike.
+ *
+ * `options.remoteLibrary` picks the loader; see `loadHtml2Canvas`.
  *
  * `getContext` is a thunk called once, synchronously, before any await:
  * WidgetPortal creates and destroys the dialog host as host-page modals come
@@ -42,6 +109,7 @@ export interface ScreenshotContext {
  */
 export async function captureScreenshot(
   getContext: () => ScreenshotContext,
+  options: CaptureOptions,
 ): Promise<ArrayBuffer> {
   const ctx = getContext();
   const excluded = new Set<Element>(
@@ -52,12 +120,7 @@ export async function captureScreenshot(
 
   let html2canvas: Html2Canvas;
   try {
-    const mod = await import("html2canvas");
-    // Bundlers disagree about whether the callable is the namespace or its
-    // default export, depending on how they interop the UMD build.
-    html2canvas = ((mod as unknown as { default?: Html2Canvas }).default ??
-      mod) as Html2Canvas;
-    if (typeof html2canvas !== "function") throw new Error("not callable");
+    html2canvas = await loadHtml2Canvas(options);
   } catch {
     throw new Error("Could not load screenshot library");
   }
