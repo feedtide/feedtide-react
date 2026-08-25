@@ -24,6 +24,11 @@ export function RemoteWidget({ config, position }: RemoteWidgetProps) {
           theme: typeof config.theme === "string" ? config.theme : config.theme?.preset,
           user_email: config.userEmail,
           user_name: config.userName,
+          // Hand embed.js the bundled html2canvas instead of letting it fetch
+          // {baseUrl}/widget/html2canvas.min.js. Still lazy — embed.js only
+          // calls this on the first screenshot request. Older embed.js builds
+          // ignore it (with a console warning) and fall back to the fetch.
+          capture_loader: () => import("html2canvas"),
         });
       }
     };

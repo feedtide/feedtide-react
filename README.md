@@ -77,6 +77,22 @@ Props passed directly to `FeedTideWidget` override provider values, so you can m
 <FeedTideWidget appId="app_abc123" native />
 ```
 
+## Screenshots
+
+The feedback form's camera button captures the host page with
+[html2canvas](https://html2canvas.hertzen.com), which ships as a dependency of
+this package rather than being fetched from `feedtide.com`. It is pulled in with
+a dynamic `import()`, so your bundler splits it into its own chunk and nothing is
+downloaded until someone actually takes a screenshot. Both `native` and the
+default remote path use the bundled copy — no cross-origin script, and nothing
+that a `script-src 'self'` policy will block.
+
+**Chrome extensions (MV3):** content scripts can't use dynamic `import()` unless
+the chunk is listed in `web_accessible_resources`. The usual fix is to build with
+`build.rollupOptions.output.inlineDynamicImports` (or let CRXJS handle it), which
+folds html2canvas into the content-script bundle — still no network fetch, still
+CSP-clean, just not code-split.
+
 ## Components
 
 - **`FeedTideWidget`** — Full floating button + panel (drop-in replacement for the embed script). Accepts all provider props directly for standalone use.
@@ -119,6 +135,11 @@ pnpm link --global @feedtide/react
 ```
 
 Run `pnpm dev` in `packages/react` to watch for changes and rebuild automatically.
+
+Run `pnpm test` for the test suite — it builds first, then checks the published
+output (html2canvas stays external and lazily imported, no library types leak into
+the declarations, `dist` loads with no DOM present) and unit-tests the screenshot
+capture path.
 
 Alternatively, use `file:` protocol in your consumer's `package.json`:
 

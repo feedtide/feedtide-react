@@ -1,0 +1,4 @@
+# pnpm 11 reads settings from here rather than package.json's "pnpm" field.
+# vitest -> vite -> esbuild ships a postinstall that pnpm blocks by default.
+allowBuilds:
+  esbuild: true

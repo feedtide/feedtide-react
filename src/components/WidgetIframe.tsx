@@ -1,6 +1,8 @@
 import { useEffect, useRef, useCallback } from "react";
 import { POSITION_STYLES } from "../constants";
 import { getSizeStyles, isMobile } from "../utils";
+import { captureScreenshot } from "./captureScreenshot";
+import { getPortalHosts } from "./WidgetPortal";
 import type { WidgetPosition, WidgetSize } from "../types";
 
 interface WidgetIframeProps {
@@ -31,6 +33,7 @@ export function WidgetIframe({
   onSetTheme,
 }: WidgetIframeProps) {
   const iframeRef = useRef<HTMLIFrameElement>(null);
+  const capturingRef = useRef(false);
   const origin = baseUrl.replace(/\/$/, "");
 
   // Apply cssText directly via ref (embed.js uses cssText strings, not React style objects)
@@ -76,6 +79,43 @@ export function WidgetIframe({
     }
   }, [isOpen, size, origin]);
 
+  // html2canvas is pulled in lazily here (never at module scope) so consumers
+  // that don't screenshot never download it, and SSR never touches it.
+  const handleCaptureScreenshot = useCallback(async () => {
+    // Drop duplicates rather than replying screenshotFailed: the iframe sets
+    // window._screenshotTarget before posting and resets it to 'main' on
+    // failure, so a reply here would misroute the in-flight capture from the
+    // feature form back to the main one and toast an error the user didn't earn.
+    if (capturingRef.current) return;
+    const iframe = iframeRef.current;
+    if (!iframe) return;
+    capturingRef.current = true;
+    try {
+      const buffer = await captureScreenshot(() => ({
+        iframe,
+        button: document.getElementById("feedback-widget-button"),
+        ...getPortalHosts(),
+      }));
+      // Re-read contentWindow: an unmount mid-capture should be a no-op, not a
+      // post into a dead window. Transferring detaches `buffer` — don't reuse it.
+      iframeRef.current?.contentWindow?.postMessage(
+        { type: "screenshotCaptured", data: buffer },
+        origin,
+        [buffer],
+      );
+    } catch (err) {
+      iframeRef.current?.contentWindow?.postMessage(
+        {
+          type: "screenshotFailed",
+          error: err instanceof Error ? err.message : "Screenshot capture failed",
+        },
+        origin,
+      );
+    } finally {
+      capturingRef.current = false;
+    }
+  }, [origin]);
+
   // Listen for postMessages from iframe
   useEffect(() => {
     function handler(event: MessageEvent) {
@@ -98,14 +138,14 @@ export function WidgetIframe({
         case "setTheme":
           onSetTheme(data.theme);
           break;
-        // captureScreenshot intentionally omitted — requires loading html2canvas
-        // which is a remote script. Chrome extensions can't load it either.
-        // Screenshot capture will gracefully fail (iframe handles the missing response).
+        case "captureScreenshot":
+          void handleCaptureScreenshot();
+          break;
       }
     }
     window.addEventListener("message", handler);
     return () => window.removeEventListener("message", handler);
-  }, [origin, onClose, onSetSize, onSetPinned, onSetTheme]);
+  }, [origin, onClose, onSetSize, onSetPinned, onSetTheme, handleCaptureScreenshot]);
 
   return (
     <iframe
