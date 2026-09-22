@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, VALID_POSITIONS, VALID_SIZES, VALID_THEMES } from "./constants";
+import { PILL_W, STORAGE_KEYS, VALID_POSITIONS, VALID_SIZES, VALID_THEMES } from "./constants";
 import type { WidgetPosition, WidgetSize } from "./types";
 
 export function isMobile(): boolean {
@@ -71,6 +71,12 @@ export function getSizeStyles(size: string, position: string, posContainerCSS: s
   return "position:fixed; " + posContainerCSS + " width:400px; max-width:calc(100vw - 40px);";
 }
 
+// The pill docks at the widget's configured corner regardless of the current size
+// mode — `centered`/`maximise` centre themselves, the pill does not.
+export function getMinimisedStyles(posContainerCSS: string): string {
+  return "position:fixed; " + posContainerCSS + " width:" + PILL_W + ";";
+}
+
 export function buildIframeSrc(
   baseUrl: string,
   appId: string,
@@ -83,6 +89,7 @@ export function buildIframeSrc(
     userName?: string;
     position: string;
     theme: string;
+    size: string;
   },
 ): string {
   const qs = new URLSearchParams({
@@ -95,6 +102,8 @@ export function buildIframeSrc(
     position: params.position,
     parent_origin: typeof window !== "undefined" ? window.location.origin : "",
     theme: params.theme,
+    // Lets the widget hide the matching size button on first paint
+    size: params.size,
   });
   if (isMobile()) qs.set("mobile", "true");
   return `${baseUrl.replace(/\/$/, "")}/widget/${appId}?${qs.toString()}`;

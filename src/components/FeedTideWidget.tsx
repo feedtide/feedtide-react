@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useFeedTideOptional, getAnonymousId } from "../provider";
 import { POSITION_STYLES, VALID_SIZES, VALID_THEMES, DEFAULT_BASE_URL } from "../constants";
 import {
@@ -102,19 +102,39 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
 
   const [isOpen, setIsOpen] = useState(false);
 
+  // Transient by design: never persisted, and deliberately not routed through
+  // setSize/setPinned. storeSize()/storePin() would make it survive a reload, so
+  // users would return to the site as a pill (or permanently pinned), and
+  // assigning it as a size would destroy the size to restore to.
+  const [isMinimised, setIsMinimised] = useState(false);
+
+  // Changing src navigates the iframe, throwing away anything the user had typed.
+  // Two inputs have to be kept out of the memo's identity for that reason:
+  //
+  //  - the Date.now() fallback, which would mint a new URL on any recompute;
+  //  - size, which the iframe only reads on first paint to hide the matching
+  //    button. Size changes travel by postMessage instead, as in embed.js.
+  //
+  // sizeRef still supplies the *current* size whenever the URL is legitimately
+  // rebuilt (a theme change), so a rebuild never restores a stale size.
+  const fallbackTimestamp = useRef(Date.now()).current;
+  const sizeRef = useRef(size);
+  sizeRef.current = size;
+
   const iframeSrc = useMemo(
     () =>
       buildIframeSrc(config.baseUrl!, config.appId, {
         userId: config.userId!,
-        timestamp: config.timestamp || Date.now(),
+        timestamp: config.timestamp || fallbackTimestamp,
         signature: config.signature,
         anonymous: !hasExplicitUserId,
         userEmail: config.userEmail,
         userName: config.userName,
         position: resolvedPosition,
         theme: activeTheme,
+        size: sizeRef.current,
       }),
-    [config, resolvedPosition, activeTheme, hasExplicitUserId],
+    [config, resolvedPosition, activeTheme, hasExplicitUserId, fallbackTimestamp],
   );
 
   useProximity(buttonEl, resolvedPosition, isOpen, isPinned);
@@ -137,6 +157,8 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
         buttonEl.style[posStyles.hideAxis] = posStyles.hiddenVal;
         buttonEl.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
       }
+      // Always restore on close, so reopening never lands on a pill
+      setIsMinimised(false);
       trackEvent(config, "widget_close");
     }
   }, [isOpen, resolvedPosition, isPinned, config, buttonEl]);
@@ -148,6 +170,8 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
       buttonEl.style[posStyles.hideAxis] = posStyles.hiddenVal;
       buttonEl.classList.remove("ft-peeking", "ft-peeking-h", "ft-visible");
     }
+    // Always restore on close, so reopening never lands on a pill
+    setIsMinimised(false);
     trackEvent(config, "widget_close");
   }, [resolvedPosition, isPinned, config, buttonEl]);
 
@@ -176,7 +200,7 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
 
   useEffect(() => {
     function handleClick(e: MouseEvent) {
-      if (!isOpen || isPinned) return;
+      if (!isOpen || isPinned || isMinimised) return;
       const iframe = document.getElementById("feedback-widget-iframe");
       if (e.target === iframe || iframe?.contains(e.target as Node)) return;
       if (e.target === buttonEl || buttonEl?.contains(e.target as Node)) return;
@@ -184,7 +208,7 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
     }
     document.addEventListener("click", handleClick);
     return () => document.removeEventListener("click", handleClick);
-  }, [isOpen, isPinned, handleClose, buttonEl]);
+  }, [isOpen, isPinned, isMinimised, handleClose, buttonEl]);
 
   // Pinned init: ensure button starts visible. Runs when buttonEl becomes
   // available (callback ref) so initial-pin state is applied even though
@@ -207,11 +231,13 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
         size={size}
         isOpen={isOpen}
         isPinned={isPinned}
+        isMinimised={isMinimised}
         theme={activeTheme}
         onClose={handleClose}
         onSetSize={handleSetSize}
         onSetPinned={handleSetPinned}
         onSetTheme={handleSetTheme}
+        onSetMinimised={setIsMinimised}
         remoteCaptureLibrary={config.remoteCaptureLibrary}
       />
     </WidgetPortal>
