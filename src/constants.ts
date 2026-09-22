@@ -7,6 +7,15 @@ export const VALID_POSITIONS: WidgetPosition[] = [
 
 export const VALID_SIZES: WidgetSize[] = ["small", "centered", "maximise"];
 
+// Minimised pill geometry. PILL_W is a budget, not a free number: the two buttons
+// that survive in the pill are restore 30px (8px padding x2 + 14px icon) + close
+// 32px (16px icon) + 1 gap x 2px + 2 x 10px header padding = 84px, leaving 4px
+// slack. The iframe clips at PILL_W, so an extra visible button would be silently
+// cut off. If you change which buttons survive, recompute this.
+export const PILL_W = "88px";
+export const PILL_H = "44px";
+export const PILL_R = "22px";
+
 export const VALID_THEMES = ["light", "dark", "system", "basic"] as const;
 
 export const POSITION_STYLES: Record<WidgetPosition, PositionStyles> = {
