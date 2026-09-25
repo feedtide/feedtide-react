@@ -95,6 +95,11 @@ export const POSITION_STYLES: Record<WidgetPosition, PositionStyles> = {
 
 export const DEFAULT_BASE_URL = "https://feedtide.com";
 
+// The capture editor's <dialog> id. Mirrors the literal in src/vendor/capture.js,
+// which is vendored byte-identically and so cannot be changed to import this.
+// Shared so foreignModal() and the outside-click handler can never drift from it.
+export const CAPTURE_DIALOG_ID = "feedtide-capture";
+
 export const STORAGE_KEYS = {
   position: "feedtide-widget-position",
   size: "feedtide-widget-size",

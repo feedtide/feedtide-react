@@ -1,69 +1,11 @@
 // @vitest-environment happy-dom
-// React only stays quiet about act() when this flag is set; there is no
-// testing-library here to set it for us.
-(globalThis as any).IS_REACT_ACT_ENVIRONMENT = true;
 import { describe, it, expect, beforeEach } from "vitest";
+// Sets IS_REACT_ACT_ENVIRONMENT before React loads — import it first.
+import { mount, ORIGIN } from "./mountWidget";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
 import { FeedTideWidget } from "../src/components/FeedTideWidget";
-
-const ORIGIN = "https://feedtide.com";
-
-interface Harness {
-  iframe: HTMLIFrameElement;
-  button: HTMLButtonElement;
-  posts: any[];
-  fromIframe: (data: any) => Promise<void>;
-  click: (el: Element) => Promise<void>;
-  width: () => string | undefined;
-  src: () => URL;
-}
-
-async function mount(storedSize?: string): Promise<Harness> {
-  document.body.innerHTML = "";
-  localStorage.clear();
-  if (storedSize) localStorage.setItem("feedtide-widget-size", storedSize);
-
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
-  await act(async () => {
-    root.render(
-      React.createElement(FeedTideWidget, { native: true, appId: "app_x", baseUrl: ORIGIN }),
-    );
-  });
-
-  const iframe = document.getElementById("feedback-widget-iframe") as HTMLIFrameElement;
-  const button = document.getElementById("feedback-widget-button") as HTMLButtonElement;
-  const posts: any[] = [];
-  const fakeWin = { postMessage: (d: any) => posts.push(d) };
-  Object.defineProperty(iframe, "contentWindow", { value: fakeWin, configurable: true });
-
-  // The real iframe starts on about:blank and only reaches the widget origin once
-  // it navigates; the host holds every send until then. Without modelling load,
-  // these tests pass against code that can never deliver a message in a browser.
-  await act(async () => { iframe.dispatchEvent(new Event("load")); });
-
-  return {
-    iframe,
-    button,
-    posts,
-    fromIframe: async (data) => {
-      await act(async () => {
-        window.dispatchEvent(
-          Object.assign(new MessageEvent("message", { data }), {
-            origin: ORIGIN,
-            source: fakeWin,
-          } as any),
-        );
-      });
-    },
-    click: async (el) => { await act(async () => { (el as HTMLElement).click(); }); },
-    width: () => /width:\s*([^;]+)/.exec(iframe.style.cssText)?.[1],
-    src: () => new URL(iframe.getAttribute("src")!),
-  };
-}
 
 const sentMinimised = (posts: any[]) =>
   posts.filter((p) => p.type === "minimisedChanged").map((p) => p.minimised);

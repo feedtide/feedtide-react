@@ -1,6 +1,12 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useFeedTideOptional, getAnonymousId } from "../provider";
-import { POSITION_STYLES, VALID_SIZES, VALID_THEMES, DEFAULT_BASE_URL } from "../constants";
+import {
+  POSITION_STYLES,
+  VALID_SIZES,
+  VALID_THEMES,
+  DEFAULT_BASE_URL,
+  CAPTURE_DIALOG_ID,
+} from "../constants";
 import {
   isMobile,
   resolveTheme,
@@ -201,6 +207,12 @@ function EmbeddedWidget({ config, configPosition, hasExplicitUserId }: EmbeddedW
   useEffect(() => {
     function handleClick(e: MouseEvent) {
       if (!isOpen || isPinned || isMinimised) return;
+      // Belt-and-braces while the capture editor is up. It already stops click
+      // propagation (as it does for embed.js, which relies on that alone), but
+      // on mobile there is no pill to set isMinimised, and the editor is a
+      // body-level dialog outside the portal — so anything that did escape
+      // would read as a click "outside" and close the widget mid-annotation.
+      if (document.getElementById(CAPTURE_DIALOG_ID)) return;
       const iframe = document.getElementById("feedback-widget-iframe");
       if (e.target === iframe || iframe?.contains(e.target as Node)) return;
       if (e.target === buttonEl || buttonEl?.contains(e.target as Node)) return;

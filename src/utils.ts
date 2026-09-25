@@ -1,8 +1,41 @@
-import { PILL_W, STORAGE_KEYS, VALID_POSITIONS, VALID_SIZES, VALID_THEMES } from "./constants";
+import {
+  CAPTURE_DIALOG_ID,
+  PILL_W,
+  STORAGE_KEYS,
+  VALID_POSITIONS,
+  VALID_SIZES,
+  VALID_THEMES,
+} from "./constants";
 import type { WidgetPosition, WidgetSize } from "./types";
 
 export function isMobile(): boolean {
   return typeof window !== "undefined" && "ontouchstart" in window;
+}
+
+/**
+ * The host page's open modal <dialog>, if any — ignoring our own.
+ *
+ * Port of embed.js's `foreignModal`. A bare `dialog:modal` query is wrong twice
+ * over: the capture editor is a modal dialog, so opening it would read as a host
+ * modal and escalate the widget into a dialog host — re-parenting, and therefore
+ * reloading, the iframe and destroying whatever the user had typed. And it
+ * matches our *own* dialog host, so once escalated the widget could never
+ * de-escalate.
+ *
+ * Array.from rather than iterating the NodeList directly, for happy-dom's sake.
+ */
+export function foreignModal(
+  dialogHost: HTMLDialogElement | null,
+): HTMLDialogElement | null {
+  for (const d of Array.from(document.querySelectorAll("dialog"))) {
+    if (d === dialogHost || d.id === CAPTURE_DIALOG_ID) continue;
+    try {
+      if (d.matches(":modal")) return d;
+    } catch {
+      /* :modal unsupported */
+    }
+  }
+  return null;
 }
 
 export function getSystemTheme(): "light" | "dark" {

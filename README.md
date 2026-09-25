@@ -63,7 +63,7 @@ Props passed directly to `FeedTideWidget` override provider values, so you can m
 | `userName` | `string` | no | Optional user name passed with votes/feedback |
 | `baseUrl` | `string` | no | API base URL (defaults to relative, i.e. same origin) |
 | `theme` | `string \| object` | no | `"system"`, `"light"`, `"dark"`, `"basic`, or a `ThemeOverrides` object |
-| `remoteCaptureLibrary` | `boolean` | no | Load the screenshot library from `{baseUrl}/widget/html2canvas.min.js` instead of the bundled copy. See [Screenshots](#screenshots) |
+| `remoteCaptureLibrary` | `boolean` | no | Load the screenshot tooling from `{baseUrl}/widget/` instead of the bundled copies. See [Screenshots](#screenshots) |
 
 ## Widget Props
 
@@ -82,26 +82,37 @@ Props passed directly to `FeedTideWidget` override provider values, so you can m
 ## Screenshots
 
 The feedback form's camera button captures the host page with
-[html2canvas](https://html2canvas.hertzen.com), which ships as a dependency of
-this package rather than being fetched from `feedtide.com`. It is pulled in with
-a dynamic `import()`, so your bundler splits it into its own chunk and nothing is
-downloaded until someone actually takes a screenshot. Both `native` and the
-default remote path use the bundled copy — no cross-origin script, and nothing
-that a `script-src 'self'` policy will block.
+[html2canvas](https://html2canvas.hertzen.com), then opens an annotation editor
+over the page — pen, highlight, hide (redact), arrow and text, with undo — before
+the image is attached to the feedback. Both ship with this package rather than
+being fetched from `feedtide.com`.
+
+The whole capture path is behind one dynamic `import()`, so your bundler splits
+it into its own chunk and nothing is downloaded until someone actually takes a
+screenshot. On `native` that chunk is served from your own origin: no
+cross-origin script, and nothing a `script-src 'self'` policy will block. The
+default (non-`native`) path runs `embed.js`, which fetches its own copies from
+`{baseUrl}/widget/` — it is the same editor source either way, so the two look
+and behave identically.
+
+While the capture runs, the widget collapses to its pill so it stays out of the
+shot (it is excluded from the image either way) and the user can see where their
+feedback went. Cancelling the editor attaches nothing and reports no error.
 
 ### Using the server's copy instead
 
-Set `remoteCaptureLibrary` to go back to fetching `{baseUrl}/widget/html2canvas.min.js`,
-the way `embed.js` does on its own. It works on both paths — `native` injects the
-script itself, and the default path simply stops handing `embed.js` a loader.
+Set `remoteCaptureLibrary` to fetch `{baseUrl}/widget/html2canvas.min.js` and
+`{baseUrl}/widget/capture.js` instead, the way `embed.js` does on its own. It
+works on both paths — `native` injects the scripts itself, and the default path
+simply stops handing `embed.js` a loader.
 
 ```tsx
 <FeedTideWidget appId="app_abc123" remoteCaptureLibrary />
 ```
 
 Reach for it when your bundler can't code-split, or when you'd rather the
-screenshot library track whatever `feedtide.com` serves than a version pinned in
-your lockfile. If the remote script fails to load, the capture falls back to the
+screenshot tooling track whatever `feedtide.com` serves than the versions pinned
+in your lockfile. If a remote script fails to load, the capture falls back to the
 bundled copy and logs a warning rather than failing.
 
 Note this doesn't shrink your bundle: the dynamic `import()` still exists in the
@@ -111,8 +122,28 @@ fetched.
 **Chrome extensions (MV3):** content scripts can't use dynamic `import()` unless
 the chunk is listed in `web_accessible_resources`. The usual fix is to build with
 `build.rollupOptions.output.inlineDynamicImports` (or let CRXJS handle it), which
-folds html2canvas into the content-script bundle — still no network fetch, still
-CSP-clean, just not code-split.
+folds html2canvas and the editor into the content-script bundle — still no
+network fetch, still CSP-clean, just not code-split.
+
+## Vendored files
+
+`src/vendor/capture.js` is the annotation editor, copied **byte-identically**
+from the feedtide repo (`packages/api/src/widget/capture.js`) so that `native`
+and the `embed.js` path can never render different editors. Its provenance is
+recorded in `src/vendor/capture.meta.json`.
+
+It is never edited here, and the sync is driven from the other side — feedtide
+owns the file, so it pushes. Fix bugs upstream, then from the feedtide repo:
+
+```bash
+pnpm sync:capture:react                                   # into ../feedtide-react
+FEEDTIDE_REACT_REPO=path/to/react pnpm sync:capture:react  # into a worktree
+```
+
+`test/vendorSync.test.ts` fails if the copy drifts from upstream (it skips when
+no feedtide checkout is present — point `FEEDTIDE_REPO` at one to run it), and
+`test/captureEditor.test.ts` characterises the behaviour this package depends
+on — read it if a sync makes it fail.
 
 ## Components
 
@@ -158,9 +189,11 @@ pnpm link --global @feedtide/react
 Run `pnpm dev` in `packages/react` to watch for changes and rebuild automatically.
 
 Run `pnpm test` for the test suite — it builds first, then checks the published
-output (html2canvas stays external and lazily imported, no library types leak into
-the declarations, `dist` loads with no DOM present) and unit-tests the screenshot
-capture path.
+output (html2canvas stays external and lazily imported, the annotation editor
+stays in the lazy chunk and out of the eager bundle, no library types leak into
+the declarations, `dist` loads with no DOM present, and both bundles stay within
+budget) and unit-tests the screenshot capture path, the editor, and the host
+message protocol.
 
 Alternatively, use `file:` protocol in your consumer's `package.json`:
 
