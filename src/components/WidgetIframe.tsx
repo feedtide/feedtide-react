@@ -1,8 +1,7 @@
 import { useEffect, useRef, useCallback } from "react";
 import { PILL_H, PILL_R, POSITION_STYLES } from "../constants";
 import { getMinimisedStyles, getSizeStyles, isMobile } from "../utils";
-import { captureScreenshot } from "./captureScreenshot";
-import { getPortalHosts } from "./WidgetPortal";
+import { getPortalHosts, restackHost } from "./WidgetPortal";
 import type { WidgetPosition, WidgetSize } from "../types";
 
 interface WidgetIframeProps {
@@ -41,6 +40,12 @@ export function WidgetIframe({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const capturingRef = useRef(false);
   const origin = baseUrl.replace(/\/$/, "");
+
+  // Read through a ref inside the capture flow: putting `isMinimised` in
+  // handleCaptureScreenshot's deps would re-register the message listener on
+  // every minimise toggle — including the one the capture itself performs.
+  const isMinimisedRef = useRef(isMinimised);
+  isMinimisedRef.current = isMinimised;
 
   // A new iframe starts on about:blank, which inherits the *parent's* origin, so
   // posting with the widget origin as targetOrigin throws and the message is lost.
@@ -127,39 +132,73 @@ export function WidgetIframe({
     post({ type: "minimisedChanged", minimised: isMinimised });
   }, [isOpen, isMinimised, post]);
 
-  // html2canvas is pulled in lazily here (never at module scope) so consumers
-  // that don't screenshot never download it, and SSR never touches it.
-  const handleCaptureScreenshot = useCallback(async () => {
-    // Drop duplicates rather than replying screenshotFailed: the iframe sets
-    // window._screenshotTarget before posting and resets it to 'main' on
-    // failure, so a reply here would misroute the in-flight capture from the
-    // feature form back to the main one and toast an error the user didn't earn.
-    if (capturingRef.current) return;
-    const iframe = iframeRef.current;
-    if (!iframe) return;
-    capturingRef.current = true;
-    try {
-      const buffer = await captureScreenshot(
-        () => ({
-          iframe,
-          button: document.getElementById("feedback-widget-button"),
-          ...getPortalHosts(),
-        }),
-        // baseUrl, not `origin`: loadRemote strips the trailing slash itself.
-        { baseUrl, remoteLibrary: remoteCaptureLibrary },
-      );
-      // post() re-reads contentWindow: an unmount mid-capture should be a no-op,
-      // not a post into a dead window. Transferring detaches `buffer` — don't reuse it.
-      post({ type: "screenshotCaptured", data: buffer }, [buffer]);
-    } catch (err) {
-      post({
-        type: "screenshotFailed",
-        error: err instanceof Error ? err.message : "Screenshot capture failed",
-      });
-    } finally {
-      capturingRef.current = false;
-    }
-  }, [post, baseUrl, remoteCaptureLibrary]);
+  // The whole capture flow — html2canvas and the vendored annotation editor —
+  // is pulled in lazily here (never at module scope) so consumers that don't
+  // screenshot never download it, and SSR never touches it.
+  const handleCaptureScreenshot = useCallback(
+    async (target: "main" | "feature") => {
+      // embed.js's `_capturing`: drop duplicate requests rather than replying
+      // screenshotFailed, which would toast an error the user didn't earn.
+      if (capturingRef.current) return;
+      const iframe = iframeRef.current;
+      if (!iframe) return;
+      capturingRef.current = true;
+
+      // Collapse to the pill for the duration, as embed.js does, so the user can
+      // see where their feedback went while the editor is up. Mobile has no
+      // restore control on the pill and is full-screen anyway, so the card and
+      // editor simply paint over it there.
+      const pill = !isMobile() && !isMinimisedRef.current;
+      if (pill) onSetMinimised(true);
+
+      try {
+        const { captureScreenshot } = await import("./captureScreenshot").catch(
+          () => {
+            throw new Error("Could not load screenshot tools");
+          },
+        );
+        const buffer = await captureScreenshot(
+          () => ({
+            iframe,
+            button: document.getElementById("feedback-widget-button"),
+            ...getPortalHosts(),
+          }),
+          {
+            // baseUrl, not `origin`: the loader strips the trailing slash itself.
+            baseUrl,
+            remoteLibrary: remoteCaptureLibrary,
+            position,
+            theme,
+            // Lift the pill above the editor. Only when there is a pill: on
+            // mobile the host holds the full-screen iframe, which would cover it.
+            onEditorOpen: () => {
+              if (pill) restackHost();
+            },
+          },
+        );
+        if (buffer) {
+          // post() re-reads contentWindow: an unmount mid-capture should be a
+          // no-op, not a post into a dead window. Transferring detaches
+          // `buffer` — don't reuse it.
+          post({ type: "screenshotCaptured", data: buffer, target }, [buffer]);
+        } else {
+          // Cancelled. The message still goes out so the wire protocol matches
+          // embed.js; the widget UI's `if (d.error)` is what keeps it silent.
+          post({ type: "screenshotFailed", target, error: null });
+        }
+      } catch (err) {
+        post({
+          type: "screenshotFailed",
+          target,
+          error: err instanceof Error ? err.message : "Screenshot capture failed",
+        });
+      } finally {
+        if (pill) onSetMinimised(false);
+        capturingRef.current = false;
+      }
+    },
+    [post, baseUrl, remoteCaptureLibrary, position, theme, onSetMinimised],
+  );
 
   // Listen for postMessages from iframe
   useEffect(() => {
@@ -187,7 +226,12 @@ export function WidgetIframe({
           onSetMinimised(data.minimised);
           break;
         case "captureScreenshot":
-          void handleCaptureScreenshot();
+          // `target` names the form the image goes back to; it rides the
+          // round-trip so two forms never share a flag. Normalised here exactly
+          // as embed.js does at its own message handler.
+          void handleCaptureScreenshot(
+            data.target === "feature" ? "feature" : "main",
+          );
           break;
       }
     }

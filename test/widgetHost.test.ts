@@ -1,66 +1,11 @@
 // @vitest-environment happy-dom
 import { describe, it, expect, beforeEach } from "vitest";
+// Sets IS_REACT_ACT_ENVIRONMENT before React loads — import it first.
+import { mount, ORIGIN } from "./mountWidget";
 import React from "react";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
 import { FeedTideWidget } from "../src/components/FeedTideWidget";
-
-const ORIGIN = "https://feedtide.com";
-
-interface Harness {
-  iframe: HTMLIFrameElement;
-  button: HTMLButtonElement;
-  posts: any[];
-  fromIframe: (data: any) => Promise<void>;
-  click: (el: Element) => Promise<void>;
-  width: () => string | undefined;
-  src: () => URL;
-}
-
-async function mount(storedSize?: string): Promise<Harness> {
-  document.body.innerHTML = "";
-  localStorage.clear();
-  if (storedSize) localStorage.setItem("feedtide-widget-size", storedSize);
-
-  const container = document.createElement("div");
-  document.body.appendChild(container);
-  const root = createRoot(container);
-  await act(async () => {
-    root.render(
-      React.createElement(FeedTideWidget, { native: true, appId: "app_x", baseUrl: ORIGIN }),
-    );
-  });
-
-  const iframe = document.getElementById("feedback-widget-iframe") as HTMLIFrameElement;
-  const button = document.getElementById("feedback-widget-button") as HTMLButtonElement;
-  const posts: any[] = [];
-  const fakeWin = { postMessage: (d: any) => posts.push(d) };
-  Object.defineProperty(iframe, "contentWindow", { value: fakeWin, configurable: true });
-
-  // The real iframe starts on about:blank and only reaches the widget origin once
-  // it navigates; the host holds every send until then. Without modelling load,
-  // these tests pass against code that can never deliver a message in a browser.
-  await act(async () => { iframe.dispatchEvent(new Event("load")); });
-
-  return {
-    iframe,
-    button,
-    posts,
-    fromIframe: async (data) => {
-      await act(async () => {
-        window.dispatchEvent(
-          Object.assign(new MessageEvent("message", { data }), {
-            origin: ORIGIN,
-            source: fakeWin,
-          } as any),
-        );
-      });
-    },
-    click: async (el) => { await act(async () => { (el as HTMLElement).click(); }); },
-    width: () => /width:\s*([^;]+)/.exec(iframe.style.cssText)?.[1],
-    src: () => new URL(iframe.getAttribute("src")!),
-  };
-}
 
 const sentMinimised = (posts: any[]) =>
   posts.filter((p) => p.type === "minimisedChanged").map((p) => p.minimised);
@@ -109,34 +54,49 @@ describe("send gating around iframe navigation", () => {
   it("holds sends until the iframe has navigated, then delivers on load", async () => {
     document.body.innerHTML = "";
     localStorage.clear();
-    const container = document.createElement("div");
-    document.body.appendChild(container);
-    const root = createRoot(container);
-    await act(async () => {
-      root.render(
-        React.createElement(FeedTideWidget, { native: true, appId: "app_x", baseUrl: ORIGIN }),
-      );
-    });
 
-    const iframe = document.getElementById("feedback-widget-iframe") as HTMLIFrameElement;
-    const posts: any[] = [];
-    Object.defineProperty(iframe, "contentWindow", {
-      value: { postMessage: (d: any) => posts.push(d) },
-      configurable: true,
-    });
+    // happy-dom fires its own `load` the moment the src commits (child-frame
+    // navigation is disabled in vitest.config.ts, so nothing is fetched and the
+    // navigation "completes" on the next microtask). This test is about the
+    // window *before* load, so hold that event back until we dispatch our own.
+    // Capture phase on document: `load` doesn't bubble and the iframe is
+    // portaled out to a body-level host, so no closer ancestor is stable.
+    let releaseLoad = false;
+    const gate = (e: Event) => { if (!releaseLoad) e.stopPropagation(); };
+    document.addEventListener("load", gate, true);
+    try {
+      const container = document.createElement("div");
+      document.body.appendChild(container);
+      const root = createRoot(container);
+      await act(async () => {
+        root.render(
+          React.createElement(FeedTideWidget, { native: true, appId: "app_x", baseUrl: ORIGIN }),
+        );
+      });
 
-    // Before load the iframe is still about:blank, which inherits the parent's
-    // origin — posting with the widget origin as targetOrigin throws there and
-    // the message is silently lost. Nothing may be sent yet.
-    await act(async () => {
-      (document.getElementById("feedback-widget-button") as HTMLElement).click();
-    });
-    expect(posts).toEqual([]);
+      const iframe = document.getElementById("feedback-widget-iframe") as HTMLIFrameElement;
+      const posts: any[] = [];
+      Object.defineProperty(iframe, "contentWindow", {
+        value: { postMessage: (d: any) => posts.push(d) },
+        configurable: true,
+      });
 
-    // Load commits: the full state is delivered in one burst.
-    await act(async () => { iframe.dispatchEvent(new Event("load")); });
-    expect(posts.map((p) => p.type)).toContain("minimisedChanged");
-    expect(sentMinimised(posts)).toContain(false);
+      // Before load the iframe is still about:blank, which inherits the parent's
+      // origin — posting with the widget origin as targetOrigin throws there and
+      // the message is silently lost. Nothing may be sent yet.
+      await act(async () => {
+        (document.getElementById("feedback-widget-button") as HTMLElement).click();
+      });
+      expect(posts).toEqual([]);
+
+      // Load commits: the full state is delivered in one burst.
+      releaseLoad = true;
+      await act(async () => { iframe.dispatchEvent(new Event("load")); });
+      expect(posts.map((p) => p.type)).toContain("minimisedChanged");
+      expect(sentMinimised(posts)).toContain(false);
+    } finally {
+      document.removeEventListener("load", gate, true);
+    }
   });
 });
 

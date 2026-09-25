@@ -51,6 +51,11 @@
     "typescript": "^5.3.0",
     "vitest": "^2.1.0"
   },
-  "sideEffects": false,
+  "comment:sideEffects": "Not a blanket false: src/vendor/capture.js is an IIFE whose whole job is assigning window.FeedtideCapture, and a side-effect-only import of it is legal to tree-shake. dist/ entries cover the emitted lazy chunk for consumers' bundlers. test/build-output.test.ts pins that the editor survives.",
+  "sideEffects": [
+    "**/vendor/*.js",
+    "./dist/captureScreenshot.js",
+    "./dist/captureScreenshot.cjs"
+  ],
   "license": "MIT"
 }

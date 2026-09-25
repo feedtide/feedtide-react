@@ -31,6 +31,7 @@ function buildButtonCSS(position: WidgetPosition): string {
       0%, 100% { transform: translateX(0); }
       50% { transform: translateX(-12px); }
     }
+    @keyframes ft-spin { to { transform: rotate(360deg); } }
     #feedback-widget-button.ft-peeking {
       animation: ft-wave-vertical 1.5s ease-in-out infinite;
     }

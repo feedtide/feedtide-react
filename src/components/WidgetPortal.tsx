@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { createPortal } from "react-dom";
+import { foreignModal } from "../utils";
 
 // Replicates embed.js popover host + dialog host escalation.
 // - Creates a popover host div in the top layer (if supported)
@@ -25,6 +26,25 @@ export function getPortalHosts() {
     dialogHost: document.getElementById(DIALOG_HOST_ID) as HTMLDialogElement | null,
     wrapper: document.getElementById(PORTAL_WRAPPER_ID),
   };
+}
+
+/**
+ * Re-enter the top layer so the popover host paints above whatever opened last
+ * — the capture editor, for instance.
+ *
+ * Port of embed.js's `restackHost`. Nothing to do while escalated: re-showing
+ * the dialog host would make it the active modal and inert the very thing we
+ * restacked above.
+ */
+export function restackHost(): void {
+  const { popoverHost, dialogHost } = getPortalHosts();
+  if (dialogHost || !popoverHost) return;
+  try {
+    (popoverHost as HTMLElement).hidePopover();
+    (popoverHost as HTMLElement).showPopover();
+  } catch {
+    /* noop */
+  }
 }
 
 const popoverSupported =
@@ -96,13 +116,6 @@ export function WidgetPortal({ children, isOpen }: WidgetPortalProps) {
 
     let hasModalDialog = false;
 
-    function restack() {
-      try {
-        hostRef.current?.hidePopover();
-        hostRef.current?.showPopover();
-      } catch { /* noop */ }
-    }
-
     function escalate() {
       if (dialogRef.current) return;
       const wrapper = wrapperRef.current;
@@ -140,11 +153,15 @@ export function WidgetPortal({ children, isOpen }: WidgetPortalProps) {
     }
 
     function checkModalState() {
-      let hasModal = false;
-      try { hasModal = !!document.querySelector("dialog:modal"); } catch { /* noop */ }
+      // foreignModal, not `dialog:modal`: that bare query matches our *own*
+      // dialog host, so once escalated hasModal stayed true forever and
+      // deescalate() could never run. It also matches the capture editor, which
+      // would escalate mid-capture and re-parent — i.e. reload — the iframe,
+      // destroying whatever the user had typed.
+      const hasModal = !!foreignModal(dialogRef.current);
       hasModalDialog = hasModal;
       if (hasModal) {
-        restack();
+        restackHost();
         if (isOpen && !dialogRef.current) escalate();
       } else {
         if (dialogRef.current) deescalate();

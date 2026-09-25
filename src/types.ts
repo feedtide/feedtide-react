@@ -8,12 +8,14 @@ export interface FeedTideConfig {
   timestamp?: number;
   theme?: ThemePresetId | ThemeOverrides;
   /**
-   * Load html2canvas from `{baseUrl}/widget/html2canvas.min.js` instead of the
-   * copy bundled with this package. Falls back to the bundled copy (with a
-   * console warning) if the remote script fails to load.
+   * Load the screenshot tooling — html2canvas *and* the annotation editor —
+   * from `{baseUrl}/widget/` instead of the copies bundled with this package.
+   * Falls back to the bundled copy (with a console warning) if either remote
+   * script fails to load.
    *
    * This does not reduce bundle size — the dynamic import still emits a chunk,
-   * it just never gets fetched.
+   * it just never gets fetched. What it buys is tracking whatever `feedtide.com`
+   * serves rather than the versions pinned here.
    */
   remoteCaptureLibrary?: boolean;
 }
