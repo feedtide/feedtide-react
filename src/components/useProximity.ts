@@ -5,7 +5,8 @@ import type { WidgetPosition } from "../types";
 
 // Replicates embed.js setupProximityDetection exactly:
 // - 2s intro delay, then button shys away
-// - mousemove: <80px = visible, 80-200px = peeking, >200px = hidden
+// - mousemove, distance to the button's spot on its edge:
+//   <80px = visible, 80-200px = peeking, >200px = hidden
 // - mouseleave: hidden
 // - Skipped on touch devices and when widget is open or pinned
 
@@ -44,14 +45,22 @@ export function useProximity(
       }
     }, 2000);
 
-    function getEdgeDistance(e: MouseEvent): number {
-      switch (axis) {
-        case "bottom": return window.innerHeight - e.clientY;
-        case "top": return e.clientY;
-        case "left": return e.clientX;
-        case "right": return window.innerWidth - e.clientX;
-        default: return Infinity;
-      }
+    // Distance from the cursor to the button's spot on its edge — not to the
+    // whole edge, or the far end of the screen would wake it. Hiding only
+    // moves the button along hideAxis, so its span parallel to the edge is
+    // valid to read even while it is tucked away.
+    function getButtonDistance(e: MouseEvent): number {
+      const r = el.getBoundingClientRect();
+      const vertical = axis === "left" || axis === "right";
+      const edge = axis === "bottom" ? window.innerHeight - e.clientY
+        : axis === "top" ? e.clientY
+        : axis === "left" ? e.clientX
+        : window.innerWidth - e.clientX;
+      const p = vertical ? e.clientY : e.clientX;
+      const lo = vertical ? r.top : r.left;
+      const hi = vertical ? r.bottom : r.right;
+      const along = Math.max(lo - p, 0, p - hi);
+      return Math.hypot(edge, along);
     }
 
     function update(dist: number) {
@@ -74,7 +83,7 @@ export function useProximity(
       if (!ticking) {
         ticking = true;
         requestAnimationFrame(() => {
-          update(getEdgeDistance(e));
+          update(getButtonDistance(e));
           ticking = false;
         });
       }
