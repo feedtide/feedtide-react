@@ -6,3 +6,4 @@ dist
 
 # Git worktrees
 .worktrees/
+/.git-wt-session

@@ -17,7 +17,7 @@
 // clone instead, so the live DOM is never touched and none of that can happen.
 // Upstream has since moved to `ignoreElements` too.
 
-import { openCaptureEditor } from "./captureEditor";
+import { fixCaptureClone, openCaptureEditor } from "./captureEditor";
 import { foreignModal } from "../utils";
 import type { WidgetPosition } from "../types";
 
@@ -219,6 +219,7 @@ export async function captureScreenshot(
       logging: false,
       scale: Math.min(window.devicePixelRatio || 1, 2),
       ignoreElements: (el: Element) => excluded.has(el),
+      onclone: fixCaptureClone,
     };
     let root: Element = document.body;
     if (modal) {

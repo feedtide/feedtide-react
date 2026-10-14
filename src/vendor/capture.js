@@ -49,8 +49,35 @@
       (cls ? ' class="' + cls + '"' : '') + '>' + inner + '</button>';
   }
 
+  // A closed <details> hides its body through the browser's internal shadow
+  // slot, not CSS, so html2canvas sees ordinary computed styles and paints
+  // every closed dropdown open. Strip the body, keeping the first <summary>.
+  function closeDetails(doc) {
+    var list = doc.querySelectorAll('details:not([open])');
+    for (var i = 0; i < list.length; i++) {
+      var d = list[i], kept = false, n = d.firstChild, next;
+      for (; n; n = next) {
+        next = n.nextSibling;
+        if (!kept && n.nodeName === 'SUMMARY') { kept = true; continue; }
+        d.removeChild(n);
+      }
+    }
+  }
+
   window.FeedtideCapture = {
     root: null,
+
+    /**
+     * html2canvas `onclone` hook: corrects the throwaway clone where
+     * html2canvas renders the page differently from the browser. Lives here,
+     * not in embed.js, so it costs nothing until the user takes a screenshot.
+     * Further fix-ups go in as calls from here.
+     *
+     * @param {Document} doc - html2canvas's cloned document. Never the live page.
+     */
+    onclone: function (doc) {
+      closeDetails(doc);
+    },
 
     /**
      * Open the editor over the page.
