@@ -64,6 +64,30 @@
     }
   }
 
+  // The clone re-runs every CSS animation from frame 0, and html2canvas reads
+  // styles before zeroing them itself — so fade-ins capture at opacity 0.
+  // Finish one-shot animations (the state the user sees); loops rest.
+  function settleAnimations(doc) {
+    var s = doc.createElement('style');
+    s.textContent = '*,*::before,*::after{animation-duration:0s!important;animation-delay:0s!important;animation-iteration-count:1!important;transition:none!important}';
+    doc.head.appendChild(s);
+  }
+
+  // html2canvas reads `background-clip:text` as border-box and ignores
+  // -webkit-text-fill-color, so gradient text becomes a filled box. Paint it
+  // as solid text in the gradient's first colour stop instead.
+  function flattenClipText(doc) {
+    var list = doc.body.getElementsByTagName('*'), win = doc.defaultView;
+    for (var i = 0; i < list.length; i++) {
+      var cs = win.getComputedStyle(list[i]);
+      if ((cs.webkitBackgroundClip || cs.backgroundClip) !== 'text') continue;
+      var stop = /rgba?\([^)]*\)/.exec(cs.backgroundImage), st = list[i].style;
+      st.background = 'none';
+      st.webkitTextFillColor = 'currentcolor';
+      if (stop) st.color = stop[0];
+    }
+  }
+
   window.FeedtideCapture = {
     root: null,
 
@@ -77,6 +101,9 @@
      */
     onclone: function (doc) {
       closeDetails(doc);
+      // Before the scan, so it reads settled styles.
+      settleAnimations(doc);
+      flattenClipText(doc);
     },
 
     /**
