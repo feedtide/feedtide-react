@@ -14,6 +14,7 @@ vi.mock("html2canvas", () => ({ default: (...args: unknown[]) => html2canvas(...
 // a seam, so each test can drive save / cancel / export-failure directly.
 vi.mock("../src/components/captureEditor", () => ({
   openCaptureEditor: vi.fn(),
+  fixCaptureClone: vi.fn(),
 }));
 const editor = vi.mocked(openCaptureEditor);
 
@@ -165,6 +166,32 @@ describe("captureScreenshot", () => {
       width: window.innerWidth,
       height: window.innerHeight,
     });
+  });
+
+  // html2canvas scrolls its clone before onclone runs; a smooth scroll there
+  // animates and the crop lands at the top of the page.
+  it("forces instant scrolling on <html> during the capture, then restores it", async () => {
+    const html = document.documentElement;
+    let during = "";
+    html2canvas.mockImplementation(async () => {
+      during = `${html.style.getPropertyValue("scroll-behavior")} ${html.style.getPropertyPriority("scroll-behavior")}`;
+      return fakeCanvas();
+    });
+
+    html.removeAttribute("style");
+    await run();
+    expect(during).toBe("auto important");
+    expect(html.hasAttribute("style")).toBe(false);
+
+    html.style.setProperty("scroll-behavior", "smooth");
+    await run();
+    expect(html.style.getPropertyValue("scroll-behavior")).toBe("smooth");
+    expect(html.style.getPropertyPriority("scroll-behavior")).toBe("");
+
+    html2canvas.mockRejectedValue(new Error("boom"));
+    await expect(run()).rejects.toThrow("Screenshot capture failed");
+    expect(html.style.getPropertyValue("scroll-behavior")).toBe("smooth");
+    html.removeAttribute("style");
   });
 
   it("passes embed.js's options through, with scale clamped at 2", async () => {

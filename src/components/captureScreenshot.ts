@@ -232,11 +232,25 @@ export async function captureScreenshot(
       opts.height = window.innerHeight;
     }
 
+    // html2canvas scrolls its clone to our offset before onclone runs. Under
+    // `scroll-behavior:smooth` that scroll animates, the clone is measured
+    // still at the top, and the crop shows the top of the page. An inline
+    // !important on <html> is copied into the clone and wins.
+    const html = document.documentElement;
+    const hadStyle = html.hasAttribute("style");
+    const prev = html.style.getPropertyValue("scroll-behavior");
+    const priority = html.style.getPropertyPriority("scroll-behavior");
+    html.style.setProperty("scroll-behavior", "auto", "important");
+
     let canvas: HTMLCanvasElement;
     try {
       canvas = await html2canvas(root, opts);
     } catch {
       throw new Error("Screenshot capture failed");
+    } finally {
+      if (prev) html.style.setProperty("scroll-behavior", prev, priority);
+      else html.style.removeProperty("scroll-behavior");
+      if (!hadStyle && !html.getAttribute("style")) html.removeAttribute("style");
     }
 
     // The editor replaces the card, rather than painting over it.
