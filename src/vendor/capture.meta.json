@@ -1,11 +1,11 @@
 {
   "source": "packages/api/src/widget/capture.js",
   "repo": "feedtide",
-  "branch": "screenshots",
-  "commit": "e5ce7a4842c38b52fbbd7c470c8c8cdf9e0a2670",
+  "branch": "screenshot-dropdowns",
+  "commit": "244f96753ae17ca1d0c3c0de77a8a8a241ce99a7",
   "committed": false,
-  "sha256": "43cc56a400b9df1cbccc71a3f304b910045ec07bee0aa7caddf9d6de6ad62ca8",
-  "bytes": 12609,
-  "syncedAt": "2026-09-24",
+  "sha256": "3c93d4f25d9101e26c3fa1b6cbb7335feeda44ec10c5acd8d9d7ebf349a5544c",
+  "bytes": 14970,
+  "syncedAt": "2026-10-14",
   "note": "capture.js had uncommitted changes upstream when vendored, so `commit` names the branch HEAD the working tree sat on, not a commit containing this exact file. Re-run `pnpm sync:capture:react` in the feedtide repo once it lands to record a reproducible commit."
 }

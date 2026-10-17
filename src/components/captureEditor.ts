@@ -38,11 +38,22 @@ export interface CaptureEditorOptions {
 interface FeedtideCapture {
   root: HTMLDialogElement | null;
   open: (options: CaptureEditorOptions) => void;
+  /** Optional: a `remoteLibrary` capture.js from an older server lacks it. */
+  onclone?: (doc: Document) => void;
 }
 
 function api(): FeedtideCapture | undefined {
   return (window as unknown as { FeedtideCapture?: FeedtideCapture })
     .FeedtideCapture;
+}
+
+/**
+ * html2canvas `onclone` hook: upstream's fix-ups for where html2canvas renders
+ * the page differently from the browser (e.g. closed <details> painted open).
+ * Runs on the throwaway clone only.
+ */
+export function fixCaptureClone(doc: Document): void {
+  api()?.onclone?.(doc);
 }
 
 /**
